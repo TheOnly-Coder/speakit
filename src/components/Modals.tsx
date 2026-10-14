@@ -360,6 +360,13 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         return;
       }
       setUser({ ...user!, displayName: data.user.displayName, customStatus: data.user.customStatus, status: data.user.status, avatarUrl: data.user.avatarUrl, bannerUrl: data.user.bannerUrl });
+      // Live-broadcast so friends see the new status instantly.
+      try {
+        const { getSocket } = await import("@/lib/socket");
+        getSocket().emit("presence:set", { status: data.user.status });
+      } catch {
+        /* offline — server restores it on reconnect */
+      }
       setMsg("Saved ✓");
     } finally {
       setBusy(false);

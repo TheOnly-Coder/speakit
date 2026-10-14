@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { sortedPair } from "@/lib/utils";
+import { visibleStatus } from "@/lib/presence";
 
 export async function GET() {
   const userId = await getSessionUserId();
@@ -20,7 +21,7 @@ export async function GET() {
     const last = c.messages[0];
     return {
       id: c.id,
-      other: { id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl, status: other.status },
+      other: { id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl, status: visibleStatus(other.status, other.id) },
       lastMessage: last?.content ?? "",
       attachments: last?.attachments.map((a) => ({ url: a.url, name: a.name, mime: a.mime })) ?? [],
       lastAt: last?.createdAt ?? c.updatedAt,

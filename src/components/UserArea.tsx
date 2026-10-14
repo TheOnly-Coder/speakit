@@ -5,6 +5,7 @@ import { Mic, MicOff, Headphones, Settings, LogOut } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useVoiceStore } from "@/store/useVoiceStore";
+import { getSocket } from "@/lib/socket";
 
 const STATUSES = [
   { id: "online", label: "Online", dot: "bg-speakit-green" },
@@ -49,7 +50,15 @@ export function UserArea({ onOpenSettings, onLogout }: { onOpenSettings: () => v
         body: JSON.stringify({ status }),
       });
       const data = await res.json();
-      if (res.ok) useAuthStore.getState().setUser({ ...user, status: data.user.status });
+      if (res.ok) {
+        useAuthStore.getState().setUser({ ...user, status: data.user.status });
+        // Live-broadcast so friends see the new status instantly.
+        try {
+          getSocket().emit("presence:set", { status: data.user.status });
+        } catch {
+          /* offline — server restores it on reconnect */
+        }
+      }
     } catch {
       /* ignore */
     }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { visibleChannels } from "@/lib/channelPerms";
+import { visibleStatus } from "@/lib/presence";
 import { z } from "zod";
 
 export async function GET(_req: Request, { params }: { params: { serverId: string } }) {
@@ -69,7 +70,7 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
         displayName: m.user.displayName,
         avatarColor: m.user.avatarColor,
         avatarUrl: m.user.avatarUrl,
-        status: m.user.status,
+        status: visibleStatus(m.user.status, m.user.id),
         role: m.role,
         roleIds: m.memberRoles.map((mr) => mr.roleId),
         roleNames: m.memberRoles.map((mr) => mr.role.name),

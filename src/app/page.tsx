@@ -182,6 +182,13 @@ export default function HomePage() {
           members: st.serverDetail.members.map((m) => (m.id === userId ? { ...m, status } : m)),
         });
       }
+      // Friends + DMs go grey/green live too — no refresh needed.
+      useAppStore.setState((s) => ({
+        friends: s.friends.map((f) => (f.id === userId ? { ...f, status } : f)),
+        conversations: s.conversations.map((c) =>
+          c.other.id === userId ? { ...c, other: { ...c.other, status } } : c
+        ),
+      }));
     };
     const onVoiceUpdate = () => {
       // Could show voice occupancy badges — refresh detail lightly (debounced by server events)

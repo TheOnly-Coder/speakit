@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
+import { visibleStatus } from "@/lib/presence";
 
 /** Public profile card for a user (banner, avatar, status). */
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -16,7 +17,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       avatarColor: user.avatarColor,
       avatarUrl: user.avatarUrl,
       bannerUrl: user.bannerUrl,
-      status: user.status,
+      status: visibleStatus(user.status, user.id),
       customStatus: user.customStatus,
       createdAt: user.createdAt,
     },

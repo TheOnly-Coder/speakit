@@ -6,6 +6,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { prisma } from "./src/lib/db";
 import { sanitizeAttachments } from "./src/lib/attachments";
 import { canInChannel } from "./src/lib/channelPerms";
+import { presenceOnline, presenceOffline, presenceSockets, visibleStatus } from "./src/lib/presence";
 
 const dev = process.env.NODE_ENV !== "production";
 // Always bind all interfaces. Hosts like Render/Docker set HOSTNAME to a
@@ -45,8 +46,6 @@ type VoiceParticipant = {
   speaking: boolean;
 };
 
-const userSockets = new Map<string, Set<string>>(); // userId -> socketIds
-const socketUser = new Map<string, { userId: string; username: string; displayName: string; avatarColor: string }>();
 const voiceRooms = new Map<string, Map<string, VoiceParticipant>>(); // channelId -> userId -> participant
 const socketVoiceChannel = new Map<string, string>(); // socketId -> channelId
 
@@ -124,6 +123,10 @@ void app.prepare().then(() => {
   const io = new SocketIOServer(httpServer, {
     cors: { origin: true, credentials: true },
     path: "/socket.io",
+    // Fast dead-client detection: a phone that loses signal / is force-closed
+    // reads as offline within ~25s instead of lingering as "online".
+    pingInterval: 15000,
+    pingTimeout: 10000,
   });
 
   io.use(async (socket, nextFn) => {
@@ -146,22 +149,26 @@ void app.prepare().then(() => {
     const u = socket.data.user as { id: string; username: string; displayName: string; avatarColor: string; avatarUrl: string };
     const userId = u.id;
 
-    socketUser.set(socket.id, { userId, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor });
-    if (!userSockets.has(userId)) userSockets.set(userId, new Set());
-    userSockets.get(userId)!.add(socket.id);
+    const firstSocket = presenceOnline(userId, socket.id);
     void socket.join(`user:${userId}`);
 
-    // Broadcast online to servers the user belongs to
-    void (async () => {
-      try {
-        const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
-        for (const m of memberships) {
-          socket.to(`server:${m.serverId}`).emit("presence:updated", { userId, status: "online" });
+    // Broadcast our *stored* status (idle/dnd respected, invisible reads as
+    // offline) — but only when our first socket connects, so a second tab
+    // doesn't replay presence to everyone.
+    if (firstSocket) {
+      void (async () => {
+        try {
+          const me = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+          const status = visibleStatus(me?.status ?? "online", userId);
+          const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
+          for (const m of memberships) {
+            socket.to(`server:${m.serverId}`).emit("presence:updated", { userId, status });
+          }
+        } catch (e) {
+          console.error("presence broadcast error", e);
         }
-      } catch (e) {
-        console.error("presence broadcast error", e);
-      }
-    })();
+      })();
+    }
 
     // ---------- Server / channel rooms ----------
     socket.on("server:join", async ({ serverId }: { serverId: string }, ack?: (res: unknown) => void) => {
@@ -195,6 +202,25 @@ void app.prepare().then(() => {
         }
       } catch {
         /* ignore */
+      }
+    });
+
+    // Live status change (online/idle/dnd/invisible): persist + broadcast the
+    // *visible* status to every server room this user belongs to.
+    socket.on("presence:set", async ({ status }: { status: string }, ack?: (res: unknown) => void) => {
+      try {
+        if (!["online", "idle", "dnd", "invisible"].includes(status)) {
+          return ack?.({ error: "Invalid status" });
+        }
+        await prisma.user.update({ where: { id: userId }, data: { status } });
+        const visible = visibleStatus(status, userId);
+        const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
+        for (const m of memberships) {
+          io.to(`server:${m.serverId}`).emit("presence:updated", { userId, status: visible });
+        }
+        ack?.({ ok: true, status: visible });
+      } catch {
+        ack?.({ error: "Failed to set status" });
       }
     });
 
@@ -634,8 +660,8 @@ void app.prepare().then(() => {
 
     socket.on("voice:signal", async ({ toUserId, channelId, kind, payload }: { toUserId: string; channelId: string; kind: "offer" | "answer" | "ice"; payload: unknown }) => {
       try {
-        const targets = userSockets.get(toUserId);
-        if (!targets) return;
+        const targets = presenceSockets(toUserId);
+        if (targets.size === 0) return;
         for (const sid of targets) {
           io.to(sid).emit("voice:signal", { fromUserId: userId, channelId, kind, payload });
         }
@@ -656,19 +682,16 @@ void app.prepare().then(() => {
     });
 
     socket.on("disconnect", async () => {
-      socketUser.delete(socket.id);
-      const set = userSockets.get(userId);
-      if (set) {
-        set.delete(socket.id);
-        if (set.size === 0) {
-          userSockets.delete(userId);
-          try {
-            const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
-            for (const m of memberships) {
-              socket.to(`server:${m.serverId}`).emit("presence:updated", { userId, status: "offline" });
-            }
-          } catch { /* ignore */ }
-        }
+      // Fully offline only when the LAST socket goes away (second tab / phone
+      // + desktop keeps you online). Everyone then sees "offline" automatically.
+      const wentOffline = presenceOffline(userId, socket.id);
+      if (wentOffline) {
+        try {
+          const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
+          for (const m of memberships) {
+            socket.to(`server:${m.serverId}`).emit("presence:updated", { userId, status: "offline" });
+          }
+        } catch { /* ignore */ }
       }
       const channelId = socketVoiceChannel.get(socket.id);
       if (channelId) {
