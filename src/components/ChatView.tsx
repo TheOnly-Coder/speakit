@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Hash, Volume2, Users } from "lucide-react";
 import { getSocket } from "@/lib/socket";
+import { pokeActive } from "@/hooks/useAutoIdle";
 import { useChatStore, type ChatMessage } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
 import { MessageItem } from "./MessageItem";
@@ -193,6 +194,8 @@ export function ChatView({ channelId }: { channelId: string }) {
   }, [channelId]);
 
   const handleSend = (content: string, attachments: ChatMessage["attachments"]) => {
+    // Saying anything = proof of life: instantly restore pre-idle status.
+    pokeActive();
     emitTyping(false);
     if (editing) {
       const cleanEdit = content.trim().slice(0, 500);

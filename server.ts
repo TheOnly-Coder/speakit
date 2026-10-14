@@ -189,6 +189,27 @@ void app.prepare().then(() => {
       })();
     }
 
+    // ANY inbound event = proof of life. If auto-away is set, saying/doing
+    // anything (message, typing, reaction, voice, …) instantly clears it and
+    // re-broadcasts the stored status — no waiting for the next mousemove /
+    // keydown. The DB status is never touched by idle, so this restores
+    // exactly whatever was there before.
+    socket.onAny(async (event) => {
+      if (event === "presence:idle" || event === "presence:active") return;
+      if (!isAutoIdle(userId)) return;
+      try {
+        clearAutoIdle(userId);
+        const me = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+        const status = visibleStatus(me?.status ?? "online", userId);
+        const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
+        for (const m of memberships) {
+          io.to(`server:${m.serverId}`).emit("presence:updated", { userId, status });
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+
     // ---------- Server / channel rooms ----------
     socket.on("server:join", async ({ serverId }: { serverId: string }, ack?: (res: unknown) => void) => {
       try {

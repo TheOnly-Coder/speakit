@@ -15,7 +15,27 @@ import { useAuthStore } from "@/store/useAuthStore";
  */
 export const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
-const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "wheel"] as const;
+const ACTIVITY_EVENTS = ["mousemove", "mousedown", "click", "keydown", "input", "touchstart", "wheel", "scroll"] as const;
+
+/**
+ * Fire-and-forget proof-of-life: call right before sending a message, typing,
+ * reacting, etc. so an auto-away user INSTANTLY flips back to whatever status
+ * they had before — even if the global activity listeners missed the input
+ * (mobile autocomplete, paste via context menu, second tab, …).
+ * The server also restores on any inbound event as a backstop.
+ */
+export function pokeActive() {
+  try {
+    getSocket().emit("presence:active");
+  } catch {
+    /* offline — the server restores the stored status on reconnect */
+  }
+  try {
+    window.dispatchEvent(new Event("speakit:activity"));
+  } catch {
+    /* ignore */
+  }
+}
 
 export function useAutoIdle(timeoutMs: number = IDLE_TIMEOUT_MS) {
   const userId = useAuthStore((s) => s.user?.id);
@@ -67,10 +87,16 @@ export function useAutoIdle(timeoutMs: number = IDLE_TIMEOUT_MS) {
     };
 
     for (const name of ACTIVITY_EVENTS) {
+      if (name === "scroll") continue; // scroll doesn't bubble to window — see below
       window.addEventListener(name, activity, { passive: true });
     }
     window.addEventListener("focus", activity);
     window.addEventListener("online", activity);
+    // Explicit proof-of-life from message send / typing (see pokeActive):
+    // resets the idle timer + restores instantly even if no DOM input fired.
+    window.addEventListener("speakit:activity", activity);
+    // Inner message lists scroll without bubbling — capture at document.
+    document.addEventListener("scroll", activity, { passive: true, capture: true });
     document.addEventListener("visibilitychange", onVisible);
     const socket = getSocket();
     socket.on("connect", onSocketConnect);
@@ -80,10 +106,13 @@ export function useAutoIdle(timeoutMs: number = IDLE_TIMEOUT_MS) {
     return () => {
       if (timer) clearTimeout(timer);
       for (const name of ACTIVITY_EVENTS) {
+        if (name === "scroll") continue;
         window.removeEventListener(name, activity);
       }
       window.removeEventListener("focus", activity);
       window.removeEventListener("online", activity);
+      window.removeEventListener("speakit:activity", activity);
+      document.removeEventListener("scroll", activity);
       document.removeEventListener("visibilitychange", onVisible);
       socket.off("connect", onSocketConnect);
     };

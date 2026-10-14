@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getSocket } from "@/lib/socket";
+import { pokeActive } from "@/hooks/useAutoIdle";
 import { useChatStore, type ChatMessage } from "@/store/useChatStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
@@ -133,6 +134,8 @@ export function DMView({ conversationId }: { conversationId: string }) {
   }, [conversationId, key, addMessage, setTyping, other?.displayName]);
 
   const handleSend = (content: string, attachments: ChatMessage["attachments"]) => {
+    // Saying anything = proof of life: instantly restore pre-idle status.
+    pokeActive();
     const clean = content.trim().slice(0, 500);
     if (editing) {
       if (!clean) return;
