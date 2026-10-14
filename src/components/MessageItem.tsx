@@ -12,6 +12,7 @@ import type { ChatMessage } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProfileStore } from "@/store/useProfileStore";
+import { displayColorFor } from "@/lib/memberGroups";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🎉"];
 
@@ -46,6 +47,13 @@ export function MessageItem({
 
   const parts = useMemo(() => splitShortcodes(msg.content), [msg.content]);
   const showBody = shouldShowBody(msg.content);
+  // Role-colored username (matches the member list): look the author up in
+  // this server's members. DMs / other servers fall back to white.
+  const inThisServer = !!channelServerId && serverDetail?.id === channelServerId;
+  const authorMember = inThisServer
+    ? serverDetail?.members.find((m) => m.id === msg.author.id)
+    : undefined;
+  const authorColor = authorMember ? displayColorFor(authorMember, serverDetail?.roles ?? []) : null;
   const replyPreview = useMemo(
     () => (msg.replyTo ? previewForMessage(msg.replyTo.content, msg.replyTo.attachments ?? []) : ""),
     [msg.replyTo]
@@ -65,7 +73,11 @@ export function MessageItem({
           </div>
         )}
         <div className="flex items-baseline gap-2">
-          <button onClick={() => openProfile(msg.author.id)} className="text-sm font-semibold text-white hover:underline">
+          <button
+            onClick={() => openProfile(msg.author.id)}
+            className="text-sm font-semibold text-white hover:underline"
+            style={authorColor ? { color: authorColor } : undefined}
+          >
             {msg.author.displayName}
           </button>
           <span className="text-[11px] text-speakit-muted">@{msg.author.username} • {formatTime(msg.createdAt)}</span>

@@ -9,10 +9,10 @@ import { MessageItem } from "./MessageItem";
 import { MessageInput } from "./MessageInput";
 import { PinsModal, PinCount, type PinItem } from "./PinsModal";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useProfileStore } from "@/store/useProfileStore";
 import { useVoiceStore } from "@/store/useVoiceStore";
 import { voiceActions } from "@/hooks/useVoice";
 import { Avatar } from "./Avatar";
+import { MemberList } from "./MemberList";
 
 function toChatMessage(raw: Record<string, unknown>): ChatMessage {
   const author = raw.author as ChatMessage["author"];
@@ -337,17 +337,8 @@ export function ChatView({ channelId }: { channelId: string }) {
         </div>
 
         {showMembers && serverDetail && (
-          <div className="hidden w-60 flex-col gap-0.5 overflow-y-auto bg-[#2b2d31] p-3 lg:flex">
-            <div className="mb-2 text-[11px] font-bold uppercase text-speakit-muted">Members — {serverDetail.members.length}</div>
-            {serverDetail.members.map((m) => (
-              <button key={m.id} onClick={() => useProfileStore.getState().openProfile(m.id)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5">
-                <Avatar name={m.displayName} color={m.avatarColor} src={m.avatarUrl || undefined} size={32} status={m.status} />
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-white">{m.displayName}</div>
-                  <div className="truncate text-[11px] text-speakit-muted">@{m.username}{m.role === "owner" ? " • owner" : ""}</div>
-                </div>
-              </button>
-            ))}
+          <div className="hidden w-60 overflow-y-auto bg-[#2b2d31] p-3 lg:block">
+            <MemberList members={serverDetail.members} roles={serverDetail.roles} ownerId={serverDetail.ownerId} />
           </div>
         )}
       </div>

@@ -9,6 +9,7 @@ import { useAppStore, type RoleItem } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { myServerPerms } from "@/lib/clientPerms";
 import { getSocket } from "@/lib/socket";
+import { displayColorFor } from "@/lib/memberGroups";
 import { PERMISSIONS, PERMISSION_LABELS, type Permission } from "@/lib/permissions";
 
 const ALL_TABS = [
@@ -641,7 +642,7 @@ function MembersTab({ refresh }: { refresh: () => Promise<void> }) {
             <div className="flex items-center gap-2">
               <Avatar name={m.displayName} color={m.avatarColor} src={m.avatarUrl || undefined} size={28} status={m.status} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm text-white">{m.displayName} {m.role === "owner" && <Crown size={12} className="inline text-yellow-400" />}</div>
+                <div className="truncate text-sm text-white" style={{ color: displayColorFor(m, serverDetail.roles) ?? undefined }}>{m.displayName} {m.role === "owner" && <Crown size={12} className="inline text-yellow-400" />}</div>
                 <div className="truncate text-[11px] text-speakit-muted">@{m.username}</div>
               </div>
               {m.id !== user?.id && m.role !== "owner" && (
