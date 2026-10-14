@@ -19,6 +19,8 @@ model User {
   bannerUrl    String   @default("")
   status       String   @default("online")
   customStatus String   @default("")
+  isBot        Boolean  @default(false)
+  botOwnerId   String?
   createdAt    DateTime @default(now())
 
   memberships ServerMember[]
@@ -33,6 +35,8 @@ model User {
   mutes Mute[]
   convoA DirectConversation[] @relation("ConvoA")
   convoB DirectConversation[] @relation("ConvoB")
+  ownedBots Bot[] @relation("BotOwner")
+  botProfile Bot? @relation("BotUser")
 }
 
 model Server {
@@ -56,6 +60,7 @@ model Server {
   roles        Role[]
   bans         Ban[]
   customEmojis CustomEmoji[]
+  botInstalls  BotServer[]
 }
 
 model ServerMember {
@@ -281,4 +286,44 @@ model DirectMessage {
   conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   author       User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   attachments  Attachment[]
+}
+
+// ---- Speakit Bots: user-owned programmable members ----
+// A Bot is a real User row (isBot=true) plus code + token + installs.
+// Because bots are real members, messages / mentions / roles all just work.
+model Bot {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation("BotOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  botUser   User     @relation("BotUser", fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  // Short public code (like an invite code) that any server manager can paste
+  // into Server Settings → Bots to install this bot. Regenerable by the owner.
+  shareCode String   @unique
+  // JSON array of {name, description} — the bot's exposed commands shown in
+  // the "/" autocomplete menu. Bots with none just run on every message.
+  commands  String   @default("[]")
+  code      String   @default("")
+  store     String   @default("{}")
+  enabled   Boolean  @default(true)
+  lastRunAt DateTime?
+  lastError String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  servers BotServer[]
+}
+
+model BotServer {
+  id        String   @id @default(cuid())
+  botId     String
+  serverId  String
+  addedById String
+  createdAt DateTime @default(now())
+
+  bot    Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, serverId])
 }

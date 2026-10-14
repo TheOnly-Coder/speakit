@@ -204,7 +204,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
         <div ref={bottomRef} />
       </div>
       {typingList.length > 0 && <div className="px-4 pb-1 text-xs text-speakit-muted">typing…</div>}
-      <MessageInput placeholder={other ? `Message @${other.username}` : "Message"} replyTo={null} editing={editing} onCancelReply={() => {}} onCancelEdit={() => setEditing(null)} onSend={handleSend} />
+      <MessageInput placeholder={other ? `Message @${other.username}` : "Message"} replyTo={null} editing={editing} onCancelReply={() => {}} onCancelEdit={() => setEditing(null)} onSend={handleSend} mentionables={other ? [{ id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl }] : []} />
     </div>
   );
 }

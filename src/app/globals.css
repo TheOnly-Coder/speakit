@@ -168,7 +168,45 @@ html.speakit-has-bg .bg-\[\#232428\] {
 
 body {
   @apply bg-speakit-bg text-speakit-text antialiased;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  /* Discord-like grotesque stack (gg sans first, graceful fallbacks) */
+  font-family: "gg sans", "Noto Sans", Whitney, "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Pop-in for autocomplete menus, dropdowns and small dialogs */
+@keyframes menu-pop {
+  from {
+    transform: translateY(6px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.menu-pop {
+  animation: menu-pop 120ms ease-out;
+  transform-origin: bottom left;
+}
+html.speakit-reduce-motion .menu-pop {
+  animation: none;
+}
+
+/* Modal entrance — subtle scale like Discord's layer */
+@keyframes modal-pop {
+  from {
+    transform: scale(0.96) translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+.modal-pop {
+  animation: modal-pop 150ms ease-out;
+}
+html.speakit-reduce-motion .modal-pop {
+  animation: none;
 }
 
 /* Slim scrollbars like Discord */

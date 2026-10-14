@@ -71,6 +71,7 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
         avatarColor: m.user.avatarColor,
         avatarUrl: m.user.avatarUrl,
         status: visibleStatus(m.user.status, m.user.id),
+        isBot: !!(m.user as { isBot?: boolean }).isBot,
         role: m.role,
         roleIds: m.memberRoles.map((mr) => mr.roleId),
         roleNames: m.memberRoles.map((mr) => mr.role.name),

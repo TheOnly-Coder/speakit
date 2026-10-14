@@ -4,7 +4,7 @@ import { memo, useMemo, useState } from "react";
 import { Reply, Pencil, Trash2, Smile, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
-import { Avatar } from "./Avatar";
+import { Avatar, BotTag } from "./Avatar";
 import { splitShortcodes, emojiUrlFor } from "@/lib/emoji";
 import { previewForMessage, shouldShowBody } from "@/lib/messagePreview";
 import type { ServerEmoji } from "@/store/useAppStore";
@@ -94,10 +94,11 @@ export const MessageItem = memo(function MessageItem({
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           <button
             onClick={() => openProfile(msg.author.id)}
-            className="min-w-0 max-w-full truncate text-sm font-semibold text-white hover:underline"
+            className="flex min-w-0 max-w-full items-center gap-1 truncate text-sm font-semibold text-white hover:underline"
             style={authorColor ? { color: authorColor } : undefined}
           >
-            {msg.author.displayName}
+            <span className="truncate">{msg.author.displayName}</span>
+            {msg.author.isBot && <BotTag />}
           </button>
           <span className="shrink-0 text-[11px] text-speakit-muted">@{msg.author.username}{showTimestamps ? ` • ${formatTime(msg.createdAt)}` : ""}</span>
           {msg.edited && <span className="text-[10px] text-speakit-muted">(edited)</span>}

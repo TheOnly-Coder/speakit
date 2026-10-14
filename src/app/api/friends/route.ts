@@ -41,6 +41,7 @@ export async function POST(req: Request) {
   const target = await prisma.user.findUnique({ where: { username } });
   if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (target.id === userId) return NextResponse.json({ error: "You can't add yourself" }, { status: 400 });
+  if (target.isBot) return NextResponse.json({ error: "That's a bot — add it to a server from User Settings → Bots" }, { status: 400 });
 
   const existingEither =
     (await prisma.friendship.findUnique({ where: { requesterId_receiverId: { requesterId: userId, receiverId: target.id } } })) ??

@@ -1,7 +1,7 @@
 "use client";
 
 import { Crown } from "lucide-react";
-import { Avatar } from "./Avatar";
+import { Avatar, BotTag } from "./Avatar";
 import { useProfileStore } from "@/store/useProfileStore";
 import { useAppStore } from "@/store/useAppStore";
 import type { MemberItem, RoleItem } from "@/store/useAppStore";
@@ -72,6 +72,7 @@ export function MemberList({
                   style={color ? { color } : undefined}
                 >
                   <span className="truncate">{m.displayName}</span>
+                  {m.isBot && <BotTag />}
                   {isOwner && <Crown size={13} className="shrink-0 text-yellow-400" />}
                 </span>
               </button>

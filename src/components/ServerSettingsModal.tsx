@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Shield, Crown } from "lucide-react";
+import { Plus, Trash2, Shield, Crown, Bot as BotIcon, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal, Field, inputCls, PrimaryButton } from "./ui";
-import { Avatar, ServerIcon } from "./Avatar";
+import { Avatar, BotTag, ServerIcon } from "./Avatar";
 import { useAppStore, type RoleItem } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { myServerPerms } from "@/lib/clientPerms";
@@ -17,6 +17,7 @@ const ALL_TABS = [
   { id: "Channels", perm: "manageChannels" },
   { id: "Roles", perm: "manageRoles" },
   { id: "Emoji", perm: "manageEmoji" },
+  { id: "Bots", perm: "manageServer" },
   { id: "Members", perm: null }, // visible with any moderation perm; buttons gated individually
   { id: "Invite", perm: "manageServer" },
 ] as const;
@@ -93,6 +94,7 @@ export function ServerSettingsModal({ open, onClose }: { open: boolean; onClose:
           {tab === "Channels" && <ChannelsTab refresh={refresh} />}
           {tab === "Roles" && <RolesTab refresh={refresh} />}
           {tab === "Emoji" && <EmojiTab refresh={refresh} />}
+          {tab === "Bots" && <ServerBotsTab refresh={refresh} />}
           {tab === "Members" && <MembersTab refresh={refresh} />}
           {tab === "Invite" && <InviteTab refresh={refresh} />}
         </>
@@ -598,6 +600,170 @@ function EmojiTab({ refresh }: { refresh: () => Promise<void> }) {
           </div>
         ))}
         {serverDetail.customEmojis.length === 0 && <div className="col-span-4 py-3 text-center text-xs text-speakit-muted">No custom emoji yet.</div>}
+      </div>
+    </div>
+  );
+}
+
+type InstalledBot = {
+  id: string;
+  userId: string;
+  name: string;
+  username: string;
+  avatarColor: string;
+  avatarUrl: string;
+  enabled: boolean;
+  commands: { name: string; description: string }[];
+  addedById: string;
+  installedAt: string;
+};
+
+/**
+ * Server Settings → Bots: paste any bot's share code to install it here.
+ * Installed bots join as members, answer "/" commands from the autocomplete
+ * menu, and run their code on every message (when they have no commands,
+ * they just do whatever their code says).
+ */
+function ServerBotsTab({ refresh }: { refresh: () => Promise<void> }) {
+  const { serverDetail } = useAppStore();
+  const [bots, setBots] = useState<InstalledBot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState("");
+  const [msgOk, setMsgOk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!serverDetail) return null;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/servers/${serverDetail.id}/bots`, { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) setBots(data.bots ?? []);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverDetail.id]);
+
+  const add = async () => {
+    const clean = code.trim().toUpperCase();
+    if (!clean) {
+      setMsg("Paste a bot's share code first — bot owners find it in User Settings → Bots.");
+      setMsgOk(false);
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/servers/${serverDetail.id}/bots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: clean }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg(data.error ?? "Couldn't add that bot");
+        setMsgOk(false);
+        return;
+      }
+      setCode("");
+      setMsg(`"${data.bot?.name ?? "Bot"}" joined the server ✓ — type / in chat to use it.`);
+      setMsgOk(true);
+      await load();
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (bot: InstalledBot) => {
+    if (!confirm(`Remove "${bot.name}" from this server? Its code stops running here.`)) return;
+    await fetch(`/api/servers/${serverDetail.id}/bots/${bot.id}`, { method: "DELETE" });
+    await load();
+    await refresh();
+  };
+
+  return (
+    <div>
+      <div className="mb-3 rounded-lg bg-speakit-blurple/10 p-3 text-xs text-speakit-text">
+        <span className="font-bold text-white">Bots are members with code.</span> Ask any bot owner for
+        their bot&apos;s <b>share code</b>, paste it below, and the bot joins instantly. Type{" "}
+        <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-bold text-white">/</kbd> in any text
+        channel to see what the installed bots can do.
+      </div>
+      <Field label="Add a bot with its share code">
+        <div className="flex gap-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="e.g. K7Q2MX9P"
+            className={`${inputCls} uppercase tracking-[0.2em]`}
+            maxLength={32}
+          />
+          <button
+            onClick={() => void add()}
+            disabled={busy}
+            className="flex shrink-0 items-center gap-1.5 rounded-md bg-speakit-green px-4 text-sm font-semibold text-white hover:bg-[#1a8a4a] disabled:opacity-50"
+          >
+            <BotIcon size={15} /> {busy ? "Adding…" : "Add Bot"}
+          </button>
+        </div>
+      </Field>
+      {msg && <div className={`mb-3 text-sm ${msgOk ? "text-green-400" : "text-red-400"}`}>{msg}</div>}
+
+      <div className="mb-1 text-xs font-bold uppercase text-speakit-muted">
+        Installed bots ({bots.length})
+      </div>
+      {loading && <div className="py-3 text-center text-xs text-speakit-muted">Loading bots…</div>}
+      {!loading && bots.length === 0 && (
+        <div className="rounded-md bg-speakit-input p-4 text-center text-xs text-speakit-muted">
+          No bots yet. Paste a share code above — bots show up here with their commands.
+        </div>
+      )}
+      <div className="max-h-64 space-y-1.5 overflow-y-auto">
+        {bots.map((b) => (
+          <div key={b.id} className="rounded-md bg-speakit-input px-2.5 py-2">
+            <div className="flex items-center gap-2">
+              <Avatar name={b.name} color={b.avatarColor} src={b.avatarUrl || undefined} size={32} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 truncate text-sm font-semibold text-white">
+                  <span className="truncate">{b.name}</span>
+                  <BotTag />
+                </div>
+                <div className="truncate text-[11px] text-speakit-muted">
+                  @{b.username}
+                  {!b.enabled && <span className="ml-1 text-yellow-400">· paused by owner</span>}
+                </div>
+              </div>
+              <button
+                onClick={() => void remove(b)}
+                className="shrink-0 rounded bg-red-500/20 px-2 py-1 text-[11px] font-semibold text-red-400 hover:bg-red-500/30"
+              >
+                Remove
+              </button>
+            </div>
+            {b.commands.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-1 pl-10">
+                {b.commands.map((c) => (
+                  <span key={c.name} title={c.description || `/${c.name}`} className="rounded bg-speakit-blurple/20 px-1.5 py-0.5 text-[11px] font-semibold text-[#b5bdff]">
+                    /{c.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-1 pl-10 text-[11px] text-speakit-muted">
+                No exposed commands — it just runs its code on messages.
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

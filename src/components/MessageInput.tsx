@@ -10,6 +10,7 @@ import { useLocalAppearance } from "@/store/useLocalAppearance";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker, type PickedGif } from "./GifPicker";
 import { previewForMessage } from "@/lib/messagePreview";
+import { Avatar, BotTag } from "./Avatar";
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const MAX_LEN = 500;
@@ -23,6 +24,47 @@ function safeName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || "file";
 }
 
+export type Mentionable = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarColor: string;
+  avatarUrl?: string;
+  isBot?: boolean;
+};
+
+export type CommandBot = {
+  id: string;
+  userId: string;
+  name: string;
+  username: string;
+  avatarColor: string;
+  avatarUrl: string;
+  enabled: boolean;
+  commands: { name: string; description: string }[];
+};
+
+type AutocompleteMenu =
+  | { kind: "mention"; query: string; at: number; index: number }
+  | { kind: "command"; query: string; index: number };
+
+/** Figure out whether an @-mention or /-command menu should be open. */
+type DetectedMenu =
+  | { kind: "mention"; query: string; at: number }
+  | { kind: "command"; query: string };
+
+function detectMenu(text: string, caret: number): DetectedMenu | null {
+  const before = text.slice(0, caret);
+  // "/" commands: only when the message starts with "/" and the caret is
+  // still inside the first word (Discord behavior).
+  if (before.startsWith("/") && !before.slice(1).includes(" ") && !before.includes("\n")) {
+    return { kind: "command", query: before.slice(1) };
+  }
+  const m = /(^|\s)@([a-zA-Z0-9_.]*)$/.exec(before);
+  if (m) return { kind: "mention", query: m[2], at: before.length - m[2].length - 1 };
+  return null;
+}
+
 export function MessageInput({
   placeholder,
   replyTo,
@@ -30,6 +72,8 @@ export function MessageInput({
   onCancelReply,
   onCancelEdit,
   onSend,
+  mentionables,
+  serverId,
 }: {
   placeholder: string;
   replyTo: ChatMessage | null;
@@ -37,6 +81,10 @@ export function MessageInput({
   onCancelReply: () => void;
   onCancelEdit: () => void;
   onSend: (content: string, attachments: ChatAttachment[]) => void;
+  /** People (and bots) that "@" can complete. Server members in channels, participants in DMs. */
+  mentionables?: Mentionable[];
+  /** When set, "/" completes this server's installed bots + their commands. */
+  serverId?: string | null;
 }) {
   const [value, setValue] = useState("");
   const [pending, setPending] = useState<ChatAttachment[]>([]);
@@ -48,6 +96,118 @@ export function MessageInput({
   const fileRef = useRef<HTMLInputElement>(null);
   const { serverDetail, myEmojis } = useAppStore();
   const enterToSend = useLocalAppearance((s) => s.enterToSend);
+
+  // ---- @ mentions + / bot commands ----
+  const [commandBots, setCommandBots] = useState<CommandBot[]>([]);
+  const [menu, setMenu] = useState<AutocompleteMenu | null>(null);
+
+  // Installed bots for the "/" menu (server channels only — bots can't DM).
+  useEffect(() => {
+    if (!serverId) {
+      setCommandBots([]);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/servers/${serverId}/bots`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && Array.isArray(d.bots)) setCommandBots(d.bots);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [serverId]);
+
+  const refreshMenu = (text: string, caret: number) => {
+    const found = detectMenu(text, caret);
+    setMenu((prev) => {
+      if (!found) return null;
+      // Keep the highlight position while typing; recompute if the token moved.
+      if (
+        prev &&
+        prev.kind === found.kind &&
+        prev.query === found.query &&
+        (found.kind !== "mention" || (prev as { at: number }).at === found.at)
+      ) {
+        return prev;
+      }
+      return { ...found, index: 0 };
+    });
+  };
+
+  type MenuRow =
+    | { key: string; type: "mention"; user: Mentionable }
+    | { key: string; type: "command"; bot: CommandBot; name: string; description: string }
+    | { key: string; type: "talk"; bot: CommandBot };
+
+  const menuRows = (): MenuRow[] => {
+    if (!menu) return [];
+    if (menu.kind === "mention") {
+      const q = menu.query.toLowerCase();
+      return (mentionables ?? [])
+        .filter(
+          (u) =>
+            !q ||
+            u.username.toLowerCase().includes(q) ||
+            u.displayName.toLowerCase().includes(q)
+        )
+        .slice(0, 8)
+        .map((u) => ({ key: `m:${u.id}`, type: "mention", user: u }) as MenuRow);
+    }
+    const q = menu.query.toLowerCase();
+    const rows: MenuRow[] = [];
+    for (const bot of commandBots) {
+      if (!bot.enabled) continue;
+      for (const c of bot.commands) {
+        if (!q || c.name.toLowerCase().includes(q)) {
+          rows.push({ key: `c:${bot.id}:${c.name}`, type: "command", bot, name: c.name, description: c.description });
+        }
+        if (rows.length >= 8) return rows;
+      }
+    }
+    // Bots with no declared commands still do things — offer to mention them.
+    for (const bot of commandBots) {
+      if (!bot.enabled || bot.commands.length > 0) continue;
+      if (!q || bot.name.toLowerCase().includes(q) || bot.username.toLowerCase().includes(q)) {
+        rows.push({ key: `t:${bot.id}`, type: "talk", bot });
+      }
+      if (rows.length >= 8) break;
+    }
+    return rows;
+  };
+
+  const acceptRow = (row: MenuRow) => {
+    const el = ref.current;
+    const caret = el?.selectionStart ?? value.length;
+    let next = value;
+    let nextCaret = caret;
+    if (row.type === "mention" && menu?.kind === "mention") {
+      next = value.slice(0, menu.at) + `@${row.user.username} ` + value.slice(caret);
+      nextCaret = menu.at + row.user.username.length + 2;
+    } else if (row.type !== "mention" && menu?.kind === "command") {
+      const insert = row.type === "command" ? `/${row.name} ` : `@${row.bot.username} `;
+      next = insert + value.slice(caret);
+      nextCaret = insert.length;
+    } else {
+      return;
+    }
+    setValue(next.slice(0, MAX_LEN + 50));
+    setMenu(null);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 160) + "px";
+      el.selectionStart = el.selectionEnd = Math.min(nextCaret, el.value.length);
+    });
+  };
+
+  // Keep the highlighted row visible while arrow-keying through the menu.
+  useEffect(() => {
+    if (!menu) return;
+    document.getElementById(`ac-row-${menu.index}`)?.scrollIntoView({ block: "nearest" });
+  }, [menu]);
 
   useEffect(() => {
     if (editing) {
@@ -87,6 +247,7 @@ export function MessageInput({
     setUploadError("");
     setShowEmoji(false);
     setShowGifs(false);
+    setMenu(null);
     if (ref.current) ref.current.style.height = "auto";
   };
 
@@ -138,6 +299,47 @@ export function MessageInput({
   const currentEmojis = serverDetail?.customEmojis ?? [];
   const allowExternal = serverDetail?.allowExternalEmoji ?? true;
   const external = myEmojis.filter((e) => !currentEmojis.some((c) => c.name === e.name));
+
+  const rows = menuRows();
+  const activeRow = menu && rows.length > 0 ? rows[Math.min(menu.index, rows.length - 1)] : null;
+
+  const onTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Autocomplete menu takes over navigation keys while open.
+    if (menu && rows.length > 0 && activeRow) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMenu({ ...menu, index: (menu.index + 1) % rows.length });
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMenu({ ...menu, index: (menu.index - 1 + rows.length) % rows.length });
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        acceptRow(activeRow);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenu(null);
+        return;
+      }
+    } else if (e.key === "Escape" && menu) {
+      e.preventDefault();
+      setMenu(null);
+      return;
+    }
+    if (e.key === "Enter" && !e.shiftKey && enterToSend) {
+      e.preventDefault();
+      submit();
+    }
+    if (e.key === "Escape" && editing) {
+      onCancelEdit();
+      setValue("");
+    }
+  };
 
   return (
     <div className="relative px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-4">
@@ -201,20 +403,17 @@ export function MessageInput({
           ref={ref}
           value={value}
           onChange={(e) => {
-            setValue(e.target.value);
+            const next = e.target.value;
+            setValue(next);
+            refreshMenu(next, e.target.selectionStart ?? next.length);
             e.target.style.height = "auto";
             e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && enterToSend) {
-              e.preventDefault();
-              submit();
-            }
-            if (e.key === "Escape" && editing) {
-              onCancelEdit();
-              setValue("");
-            }
+          onSelect={(e) => {
+            const el = e.target as HTMLTextAreaElement;
+            refreshMenu(el.value, el.selectionStart ?? el.value.length);
           }}
+          onKeyDown={onTextareaKeyDown}
           rows={1}
           maxLength={MAX_LEN + 50}
           placeholder={placeholder}
@@ -227,6 +426,69 @@ export function MessageInput({
           <Send size={18} />
         </button>
       </div>
+      {menu && rows.length > 0 && (
+        <div className="menu-pop absolute bottom-full left-2 right-2 z-20 mb-1 overflow-hidden rounded-lg bg-[#111214] shadow-2xl ring-1 ring-black/60 sm:left-4 sm:w-80 sm:right-auto">
+          <div className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-speakit-muted">
+            {menu.kind === "mention" ? "Mention — pick someone to ping" : "Bot commands — type to filter"}
+          </div>
+          <div className="max-h-60 overflow-y-auto p-1.5">
+            {rows.map((row, i) => (
+              <button
+                key={row.key}
+                id={`ac-row-${i}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => acceptRow(row)}
+                onMouseEnter={() => setMenu({ ...menu, index: i })}
+                className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left ${
+                  activeRow?.key === row.key ? "bg-speakit-blurple/60" : "hover:bg-white/5"
+                }`}
+              >
+                {row.type === "mention" && (
+                  <>
+                    <Avatar name={row.user.displayName} color={row.user.avatarColor} src={row.user.avatarUrl || undefined} size={28} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1 truncate text-sm font-semibold text-white">
+                        <span className="truncate">{row.user.displayName}</span>
+                        {row.user.isBot && <BotTag />}
+                      </span>
+                      <span className="block truncate text-[11px] text-speakit-muted">@{row.user.username}</span>
+                    </span>
+                  </>
+                )}
+                {row.type === "command" && (
+                  <>
+                    <Avatar name={row.bot.name} color={row.bot.avatarColor} src={row.bot.avatarUrl || undefined} size={28} />
+                    <span className="min-w-0 flex-1">
+                      <span className="truncate text-sm font-semibold text-white">
+                        <span className="text-[#b5bdff]">/{row.name}</span>
+                      </span>
+                      <span className="block truncate text-[11px] text-speakit-muted">
+                        {row.description || `Run ${row.name}`} · {row.bot.name}
+                      </span>
+                    </span>
+                    <BotTag />
+                  </>
+                )}
+                {row.type === "talk" && (
+                  <>
+                    <Avatar name={row.bot.name} color={row.bot.avatarColor} src={row.bot.avatarUrl || undefined} size={28} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1 truncate text-sm font-semibold text-white">
+                        <span className="truncate">{row.bot.name}</span>
+                        <BotTag />
+                      </span>
+                      <span className="block truncate text-[11px] text-speakit-muted">No commands — mention to talk to it</span>
+                    </span>
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-white/10 px-3 py-1.5 text-[10px] text-speakit-muted">
+            ↑↓ to move · Enter to pick · Esc to dismiss
+          </div>
+        </div>
+      )}
       {showEmoji && (
         <div className="absolute bottom-full left-4 z-20 mb-1">
           <EmojiPicker

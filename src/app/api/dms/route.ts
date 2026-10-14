@@ -38,6 +38,7 @@ export async function POST(req: Request) {
   if (!otherId || otherId === userId) return NextResponse.json({ error: "Invalid user" }, { status: 400 });
   const other = await prisma.user.findUnique({ where: { id: otherId } });
   if (!other) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (other.isBot) return NextResponse.json({ error: "Bots don't take DMs — add them to a server instead" }, { status: 400 });
 
   const [a, b] = sortedPair(userId, otherId);
   let convo = await prisma.directConversation.findUnique({ where: { participantAId_participantBId: { participantAId: a, participantBId: b } } });

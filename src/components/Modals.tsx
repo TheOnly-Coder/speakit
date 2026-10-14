@@ -9,6 +9,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeStore } from "@/store/useThemeStore";
 import { useLocalAppearance } from "@/store/useLocalAppearance";
+import { BotsSettings } from "./BotsSettings";
 
 export function CreateServerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [name, setName] = useState("");
@@ -274,7 +275,7 @@ export function NewDMModal({ open, onClose }: { open: boolean; onClose: () => vo
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, setUser } = useAuthStore();
-  const [tab, setTab] = useState<"account" | "profile" | "appearance" | "notifications" | "keybinds" | "app">("account");
+  const [tab, setTab] = useState<"account" | "profile" | "bots" | "appearance" | "notifications" | "keybinds" | "app">("account");
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [customStatus, setCustomStatus] = useState(user?.customStatus ?? "");
   const [status, setStatus] = useState(user?.status ?? "online");
@@ -378,6 +379,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const tabs = [
     { id: "account" as const, label: "My Account" },
     { id: "profile" as const, label: "Profiles" },
+    { id: "bots" as const, label: "Bots" },
     { id: "appearance" as const, label: "Appearance" },
     { id: "notifications" as const, label: "Notifications" },
     { id: "keybinds" as const, label: "Shortcuts" },
@@ -484,6 +486,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             {tab === "notifications" && <NotificationsTab />}
             {tab === "keybinds" && <KeybindsTab />}
             {tab === "app" && <InstallTab />}
+            {tab === "bots" && <BotsSettings />}
           </div>
         </div>
 

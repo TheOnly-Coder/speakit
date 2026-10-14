@@ -61,6 +61,7 @@ export type MemberItem = {
   avatarColor: string;
   avatarUrl?: string;
   status: string;
+  isBot?: boolean;
   role: string;
   roleIds: string[];
   roleNames: string[];

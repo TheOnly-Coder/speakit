@@ -7,6 +7,7 @@ import { prisma } from "./src/lib/db";
 import { sanitizeAttachments } from "./src/lib/attachments";
 import { canInChannel } from "./src/lib/channelPerms";
 import { presenceOnline, presenceOffline, presenceSockets, visibleStatus } from "./src/lib/presence";
+import { handleBotTriggers } from "./src/lib/bots/executor";
 
 const dev = process.env.NODE_ENV !== "production";
 // Always bind all interfaces. Hosts like Render/Docker set HOSTNAME to a
@@ -128,6 +129,20 @@ void app.prepare().then(() => {
     pingInterval: 15000,
     pingTimeout: 10000,
   });
+
+  // Lets Next API routes (bot HTTP API) broadcast live without importing
+  // socket.io there — see src/lib/bots/emit.ts.
+  (globalThis as unknown as { __speakit_io_emit?: unknown }).__speakit_io_emit = (
+    room: string,
+    event: string,
+    payload: unknown
+  ) => {
+    try {
+      io.to(room).emit(event, payload as never);
+    } catch {
+      /* ignore */
+    }
+  };
 
   io.use(async (socket, nextFn) => {
     try {
@@ -322,7 +337,7 @@ void app.prepare().then(() => {
             createdAt: message.createdAt,
             updatedAt: message.updatedAt,
             tempId: payload.tempId,
-            author: { id: message.author.id, username: message.author.username, displayName: message.author.displayName, avatarColor: message.author.avatarColor, avatarUrl: message.author.avatarUrl },
+            author: { id: message.author.id, username: message.author.username, displayName: message.author.displayName, avatarColor: message.author.avatarColor, avatarUrl: message.author.avatarUrl, isBot: !!(message.author as { isBot?: boolean }).isBot },
             replyTo: message.replyTo
               ? { id: message.replyTo.id, content: message.replyTo.content, author: { id: message.replyTo.author.id, username: message.replyTo.author.username, displayName: message.replyTo.author.displayName } }
               : null,
@@ -331,6 +346,46 @@ void app.prepare().then(() => {
           };
           io.to(`channel:${payload.channelId}`).emit("channel:message:new", out);
           ack?.({ ok: true, message: out });
+          // Installed bots react to every human message (fire-and-forget).
+          void (async () => {
+            try {
+              let serverName = "";
+              try {
+                const s = await prisma.server.findUnique({ where: { id: channel.serverId }, select: { name: true } });
+                serverName = s?.name ?? "";
+              } catch {
+                /* ignore */
+              }
+              const replies = await handleBotTriggers({
+                messageId: message.id,
+                content: message.content,
+                authorId: userId,
+                channelId: payload.channelId,
+                channelName: channel.name,
+                serverId: channel.serverId,
+                serverName,
+              });
+              for (const b of replies) {
+                const replyTo = b.replyToId
+                  ? { id: message.id, content: message.content, author: { id: userId, username: message.author.username, displayName: message.author.displayName } }
+                  : null;
+                io.to(`channel:${b.channelId}`).emit("channel:message:new", {
+                  id: b.id,
+                  content: b.content,
+                  channelId: b.channelId,
+                  edited: false,
+                  createdAt: b.createdAt,
+                  updatedAt: b.createdAt,
+                  author: b.author,
+                  replyTo,
+                  reactions: [],
+                  attachments: [],
+                });
+              }
+            } catch (e) {
+              console.error("bot trigger failed", e);
+            }
+          })();
           // Pings: @mentions + replies only (muted channels stay silent).
           void (async () => {
             try {

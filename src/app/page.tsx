@@ -590,14 +590,14 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
       </div>
 
       <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mb-4 rounded-xl bg-gradient-to-r from-[#5865f2] to-[#9b59b6] p-5 sm:p-6">
-          <h2 className="text-lg font-black text-white sm:text-xl">Hey {user?.displayName} 👋 Welcome to Speakit</h2>
-          <p className="mt-1 text-sm text-white/80">
-            Discord-style: press <b>Ctrl K</b> to jump anywhere, right-click anything for more, and set your background + theme in User Settings (gear, bottom-left).
+        <div className="mb-4 rounded-xl bg-speakit-blurple p-5 sm:p-6">
+          <h2 className="text-lg font-black text-white sm:text-xl">Hey {user?.displayName}, welcome to SpeakIt</h2>
+          <p className="mt-1 text-sm text-white/85">
+            Press <b>Ctrl K</b> to jump anywhere, type <b>@</b> to mention someone, <b>/</b> for bot commands, and open User Settings (gear, bottom-left) for themes and bots.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={onAddFriend} className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-[#5865f2]">Add friends</button>
-            <button onClick={onNewDM} className="rounded-md bg-black/30 px-3 py-1.5 text-xs font-bold text-white">Start a DM</button>
+            <button onClick={onAddFriend} className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-[#5865f2] hover:bg-white/90">Add friends</button>
+            <button onClick={onNewDM} className="rounded-md bg-black/30 px-3 py-1.5 text-xs font-bold text-white hover:bg-black/40">Start a DM</button>
           </div>
         </div>
 

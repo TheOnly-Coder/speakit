@@ -333,6 +333,8 @@ export function ChatView({ channelId }: { channelId: string }) {
             onCancelReply={() => setReplyTo(null)}
             onCancelEdit={() => setEditing(null)}
             onSend={handleSend}
+            serverId={channel.serverId}
+            mentionables={serverDetail?.members ?? []}
           />
         </div>
 

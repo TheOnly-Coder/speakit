@@ -16,9 +16,9 @@ export function Modal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-xl bg-speakit-sidebar p-6 shadow-2xl">
+      <div className="modal-pop relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-xl bg-speakit-sidebar p-6 shadow-2xl ring-1 ring-black/60">
         <h2 className="mb-4 text-xl font-bold text-white">{title}</h2>
         {children}
       </div>

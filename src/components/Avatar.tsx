@@ -49,6 +49,20 @@ export function Avatar({
   );
 }
 
+/** Discord-style BOT badge shown next to bot names. */
+export function BotTag({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded bg-speakit-blurple px-1 py-px text-[10px] font-bold uppercase leading-tight text-white",
+        className
+      )}
+    >
+      Bot
+    </span>
+  );
+}
+
 export function ServerIcon({ name, color, active, unread }: { name: string; color: string; active?: boolean; unread?: boolean }) {
   return (
     <div className="group relative flex items-center">

@@ -6,6 +6,7 @@ export type ChatAuthor = {
   displayName: string;
   avatarColor: string;
   avatarUrl?: string;
+  isBot?: boolean;
 };
 
 export type ChatAttachment = {
