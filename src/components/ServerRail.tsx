@@ -27,7 +27,7 @@ export function ServerRail({
   });
 
   return (
-    <div className="flex w-[var(--speakit-rail-w)] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-speakit-rail py-3">
+    <div className="flex h-full min-h-0 w-[var(--speakit-rail-w)] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-speakit-rail py-3">
       <button
         onClick={onHome}
         title="Home / DMs"

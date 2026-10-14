@@ -354,7 +354,7 @@ export default function HomePage() {
       <VoiceBridge />
       <ContextMenuHost />
       {/* Desktop rail */}
-      <div className="hidden sm:block">
+      <div className="hidden shrink-0 sm:flex sm:min-h-0">
         <ServerRail
           onAdd={() => setShowCreate(true)}
           onJoin={() => setShowJoin(true)}
@@ -366,7 +366,7 @@ export default function HomePage() {
         />
       </div>
       {/* Desktop sidebar */}
-      <div className="hidden sm:flex">{sidebar}</div>
+      <div className="hidden shrink-0 sm:flex sm:min-h-0">{sidebar}</div>
 
       {/* Mobile drawer (Discord-like slide-over) */}
       {mobileNav && (
