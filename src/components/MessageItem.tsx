@@ -40,6 +40,7 @@ export const MessageItem = memo(function MessageItem({
   const { openProfile } = useProfileStore();
   const compact = useLocalAppearance((s) => s.compact);
   const showTimestamps = useLocalAppearance((s) => s.showTimestamps);
+  const msgSpacing = useLocalAppearance((s) => s.msgSpacing);
   const [showEmoji, setShowEmoji] = useState(false);
   const isMine = user?.id === msg.author.id;
 
@@ -63,10 +64,12 @@ export const MessageItem = memo(function MessageItem({
     [msg.replyTo]
   );
 
+  const msgPad = Math.round((compact ? 2 : 6) * msgSpacing);
   return (
     <div
       id={`msg-${msg.id}`}
       className={`group relative flex scroll-mt-16 gap-2 px-3 py-1.5 hover:bg-black/20 sm:gap-3 sm:px-4 ${compact ? "py-0.5" : "py-1.5"}`}
+      style={{ paddingTop: msgPad, paddingBottom: msgPad }}
       {...ctxProps(() => [
         { type: "item" as const, label: "Reply", onClick: () => onReply(msg) },
         { type: "item" as const, label: msg.pinned ? "Unpin Message" : "Pin Message", onClick: () => onPin(msg) },

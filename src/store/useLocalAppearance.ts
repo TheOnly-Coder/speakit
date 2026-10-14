@@ -17,7 +17,24 @@ export type BgSettings = {
   reduceMotion: boolean;
   desktopSounds: boolean;
   enterToSend: boolean;
+  // local-only layout prefs (per-device) — resizable panels
+  sidebarWidth: number; // 192..320 px
+  railWidth: number; // 60..88 px
+  msgSpacing: number; // 0.75..1.5 multiplier on message padding
+  slimTopBar: boolean; // hide the search pill on phones for more chat room
 };
+
+export const LAYOUT_LIMITS = {
+  sidebarWidth: { min: 192, max: 320 },
+  railWidth: { min: 60, max: 88 },
+  msgSpacing: { min: 0.75, max: 1.5 },
+} as const;
+
+function clampNum(v: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
 
 const DEFAULTS: BgSettings = {
   enabled: true,
@@ -31,6 +48,10 @@ const DEFAULTS: BgSettings = {
   reduceMotion: false,
   desktopSounds: true,
   enterToSend: true,
+  sidebarWidth: 240,
+  railWidth: 72,
+  msgSpacing: 1,
+  slimTopBar: false,
 };
 
 const SETTINGS_KEY = "speakit-local-appearance-v1";
@@ -44,7 +65,12 @@ function loadSettings(): BgSettings {
     const raw = window.localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw) as Partial<BgSettings>;
-    return { ...DEFAULTS, ...parsed };
+    const merged: BgSettings = { ...DEFAULTS, ...parsed };
+    // Sanitize layout numbers (old saves / hand-edited storage).
+    merged.sidebarWidth = clampNum(merged.sidebarWidth, LAYOUT_LIMITS.sidebarWidth.min, LAYOUT_LIMITS.sidebarWidth.max, DEFAULTS.sidebarWidth);
+    merged.railWidth = clampNum(merged.railWidth, LAYOUT_LIMITS.railWidth.min, LAYOUT_LIMITS.railWidth.max, DEFAULTS.railWidth);
+    merged.msgSpacing = clampNum(merged.msgSpacing, LAYOUT_LIMITS.msgSpacing.min, LAYOUT_LIMITS.msgSpacing.max, DEFAULTS.msgSpacing);
+    return merged;
   } catch {
     return DEFAULTS;
   }
@@ -240,12 +266,22 @@ export const useLocalAppearance = create<BgState>((set, get) => ({
   },
 }));
 
-export function applyCssVars(s: { fontScale: number; compact: boolean; reduceMotion: boolean }) {
+export function applyCssVars(s: {
+  fontScale: number;
+  compact: boolean;
+  reduceMotion: boolean;
+  sidebarWidth: number;
+  railWidth: number;
+  slimTopBar: boolean;
+}) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   root.style.setProperty("--speakit-font-scale", String(s.fontScale));
+  root.style.setProperty("--speakit-sidebar-w", `${clampNum(s.sidebarWidth, LAYOUT_LIMITS.sidebarWidth.min, LAYOUT_LIMITS.sidebarWidth.max, 240)}px`);
+  root.style.setProperty("--speakit-rail-w", `${clampNum(s.railWidth, LAYOUT_LIMITS.railWidth.min, LAYOUT_LIMITS.railWidth.max, 72)}px`);
   root.classList.toggle("speakit-compact", !!s.compact);
   root.classList.toggle("speakit-reduce-motion", !!s.reduceMotion);
+  root.classList.toggle("slim-topbar", !!s.slimTopBar);
 }
 
 /** Downscale + compress an uploaded file to a device-local dataURL (never uploaded). */

@@ -27,7 +27,7 @@ export function DMSidebar({
   const { conversations, activeDMId, setActiveDM, dmMentionCounts, toggleMute, markMentionsRead, pendingIn } = useAppStore();
 
   return (
-    <div className="flex w-60 max-w-[calc(92vw-4.5rem)] shrink-0 flex-col bg-speakit-sidebar">
+    <div className="flex w-[var(--speakit-sidebar-w)] max-w-[calc(92vw-var(--speakit-rail-w))] shrink-0 flex-col bg-speakit-sidebar">
       <div className="flex h-12 shrink-0 items-center border-b border-black/30 px-4">
         <span className="truncate text-sm font-bold text-white">Direct Messages</span>
       </div>

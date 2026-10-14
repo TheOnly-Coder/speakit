@@ -394,7 +394,7 @@ export default function HomePage() {
           {/* Discord-style global search */}
           <button
             onClick={() => setShowQuick(true)}
-            className="mx-auto flex w-full max-w-md flex-1 items-center gap-2 rounded-md bg-black/30 px-3 py-1.5 text-left text-xs text-speakit-muted hover:bg-black/50 hover:text-speakit-text sm:mx-2"
+            className="topbar-search mx-auto flex w-full max-w-md flex-1 items-center gap-2 rounded-md bg-black/30 px-3 py-1.5 text-left text-xs text-speakit-muted hover:bg-black/50 hover:text-speakit-text sm:mx-2"
             title="Quick Switcher (Ctrl+K)"
           >
             <Search size={12} className="shrink-0" />

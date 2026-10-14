@@ -496,6 +496,10 @@ function AppearanceTab() {
   const showTimestamps = useLocalAppearance((s) => s.showTimestamps);
   const reduceMotion = useLocalAppearance((s) => s.reduceMotion);
   const enterToSend = useLocalAppearance((s) => s.enterToSend);
+  const sidebarWidth = useLocalAppearance((s) => s.sidebarWidth);
+  const railWidth = useLocalAppearance((s) => s.railWidth);
+  const msgSpacing = useLocalAppearance((s) => s.msgSpacing);
+  const slimTopBar = useLocalAppearance((s) => s.slimTopBar);
 
   return (
     <div>
@@ -550,6 +554,45 @@ function AppearanceTab() {
           <input type="checkbox" checked={row.value} onChange={(e) => patch({ [row.key]: e.target.checked })} className="h-4 w-4 accent-[#5865f2]" />
         </label>
       ))}
+
+      <div className="mb-2 mt-4 text-xs font-bold uppercase text-speakit-muted">Layout — panel sizes (this device only)</div>
+      <p className="mb-3 text-xs text-speakit-muted">Resize the app panels to fit your screen. Applies instantly on mobile and PC.</p>
+
+      <div className="mb-3">
+        <div className="mb-1 flex items-center justify-between text-xs text-speakit-muted">
+          <span className="font-bold uppercase">Channel / DM list width</span>
+          <span>{Math.round(sidebarWidth)}px</span>
+        </div>
+        <input type="range" min={192} max={320} step={4} value={sidebarWidth} onChange={(e) => patch({ sidebarWidth: Number(e.target.value) })} className="w-full accent-[#5865f2]" />
+      </div>
+
+      <div className="mb-3">
+        <div className="mb-1 flex items-center justify-between text-xs text-speakit-muted">
+          <span className="font-bold uppercase">Server rail width</span>
+          <span>{Math.round(railWidth)}px</span>
+        </div>
+        <input type="range" min={60} max={88} step={2} value={railWidth} onChange={(e) => patch({ railWidth: Number(e.target.value) })} className="w-full accent-[#5865f2]" />
+      </div>
+
+      <div className="mb-3">
+        <div className="mb-1 flex items-center justify-between text-xs text-speakit-muted">
+          <span className="font-bold uppercase">Message spacing</span>
+          <span>{Math.round(msgSpacing * 100)}%</span>
+        </div>
+        <input type="range" min={75} max={150} step={5} value={Math.round(msgSpacing * 100)} onChange={(e) => patch({ msgSpacing: Number(e.target.value) / 100 })} className="w-full accent-[#5865f2]" />
+      </div>
+
+      <label className="mb-2 flex cursor-pointer items-center justify-between rounded-md bg-speakit-input px-3 py-2.5 text-sm">
+        <span className="text-white">Slim top bar on phones <span className="block text-xs font-normal text-speakit-muted">Hides the search pill on small screens for a taller chat</span></span>
+        <input type="checkbox" checked={slimTopBar} onChange={(e) => patch({ slimTopBar: e.target.checked })} className="h-4 w-4 accent-[#5865f2]" />
+      </label>
+
+      <button
+        onClick={() => patch({ sidebarWidth: 240, railWidth: 72, msgSpacing: 1, slimTopBar: false })}
+        className="mt-1 w-full rounded-md bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/20"
+      >
+        Reset layout to defaults
+      </button>
     </div>
   );
 }

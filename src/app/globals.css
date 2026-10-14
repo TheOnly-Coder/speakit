@@ -47,6 +47,8 @@ body,
 /* Per-device appearance prefs (local-only, Discord-like) */
 :root {
   --speakit-font-scale: 1;
+  --speakit-sidebar-w: 240px;
+  --speakit-rail-w: 72px;
 }
 
 body {
@@ -134,6 +136,14 @@ html.speakit-reduce-motion .speakit-shell-in {
 html.speakit-reduce-motion .drawer-in,
 html.speakit-reduce-motion .sheet-up {
   animation: none;
+}
+
+/* Slim top bar (per-device setting): hide the search pill on phones so the
+   chat gets more vertical room. The Search tab still opens Quick Switcher. */
+@media (max-width: 639px) {
+  html.slim-topbar .topbar-search {
+    display: none;
+  }
 }
 
 /* Local background active: make Discord surfaces translucent so the image shows through */
