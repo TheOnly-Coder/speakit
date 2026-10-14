@@ -1,0 +1,33 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getSessionUserId } from "@/lib/auth";
+import { z } from "zod";
+
+export async function PATCH(req: Request, { params }: { params: { messageId: string } }) {
+  const userId = await getSessionUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const msg = await prisma.message.findUnique({ where: { id: params.messageId } });
+  if (!msg) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (msg.authorId !== userId) return NextResponse.json({ error: "Only the author can edit" }, { status: 403 });
+  const body = await req.json();
+  const parsed = z.object({ content: z.string().min(1).max(4000) }).safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Invalid content" }, { status: 400 });
+  const updated = await prisma.message.update({
+    where: { id: msg.id },
+    data: { content: parsed.data.content.trim().slice(0, 4000), edited: true },
+    include: { author: true, replyTo: { include: { author: true } }, reactions: true },
+  });
+  return NextResponse.json({ message: updated });
+}
+
+export async function DELETE(_req: Request, { params }: { params: { messageId: string } }) {
+  const userId = await getSessionUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const msg = await prisma.message.findUnique({ where: { id: params.messageId }, include: { channel: true } });
+  if (!msg) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const server = await prisma.server.findUnique({ where: { id: msg.channel.serverId } });
+  const isOwner = server?.ownerId === userId;
+  if (msg.authorId !== userId && !isOwner) return NextResponse.json({ error: "Cannot delete" }, { status: 403 });
+  await prisma.message.delete({ where: { id: msg.id } });
+  return NextResponse.json({ ok: true, channelId: msg.channelId, id: msg.id });
+}

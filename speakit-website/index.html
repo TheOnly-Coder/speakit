@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Speakit — Group Chat &amp; Voice</title>
+  <meta name="description" content="Speakit is a community chat app: servers, text and voice channels, DMs, friends and image sharing." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235865f2'/%3E%3Ctext x='32' y='44' font-family='Arial' font-size='36' font-weight='900' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============================================================
+    Speakit landing page — 100% static, GitHub Pages ready.
+    HOW TO POINT BUTTONS AT YOUR APP: search this file for
+    href="#" and replace with your links (app URL, invite, repo).
+  ============================================================= -->
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top"><span class="logo">S</span> Speakit</a>
+      <nav class="links" id="navLinks">
+        <a href="#features">Features</a>
+        <a href="#voice">Voice</a>
+        <a href="#start">Get started</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav-cta">
+        <a class="btn btn-primary" href="#" id="openAppTop">Open Speakit</a>
+        <button class="burger" id="burger" aria-label="Menu">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1>Group chat that feels like home.</h1>
+          <p>Speakit gives your community servers, text &amp; voice channels, DMs, friends, and image sharing — live, in your browser.</p>
+          <div class="hero-btns">
+            <a class="btn btn-primary btn-lg" href="#" id="openAppHero">Open the app</a>
+            <a class="btn btn-ghost btn-lg" href="#start">How hosting works</a>
+          </div>
+          <p class="hero-note">Free • No install • Runs in any modern browser</p>
+        </div>
+        <div class="hero-mock" aria-hidden="true">
+          <div class="mock-rail"><span></span><span class="on"></span><span></span><span></span></div>
+          <div class="mock-side">
+            <div class="mock-server">Gaming Hub</div>
+            <div class="mock-ch on"># general</div>
+            <div class="mock-ch"># clips</div>
+            <div class="mock-ch"># announcements</div>
+            <div class="mock-ch">🔊 Lounge</div>
+          </div>
+          <div class="mock-chat">
+            <div class="mock-head"># general</div>
+            <div class="mock-msg"><i style="background:#5865f2">A</i><div><b>Alex</b><p>raid at 8pm, who's in? 🎮</p></div></div>
+            <div class="mock-msg"><i style="background:#eb459e">M</i><div><b>Mia</b><p>me + this clip 😂</p><span class="mock-img">GIF</span></div></div>
+            <div class="mock-msg"><i style="background:#57f287">J</i><div><b>Jay</b><p>on my way, joining voice 🔊</p></div></div>
+            <div class="mock-input">Message #general…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <div class="wrap">
+        <h2>Everything a community needs</h2>
+        <div class="cards">
+          <div class="card"><div class="ico">💬</div><h3>Servers &amp; channels</h3><p>Create a server, add text channels, invite friends with an 8-character code.</p></div>
+          <div class="card"><div class="ico">🔊</div><h3>Voice channels</h3><p>Jump into low-latency voice with mute, deafen, and live speaking indicators.</p></div>
+          <div class="card"><div class="ico">⚡</div><h3>Real-time everything</h3><p>Messages, typing indicators, reactions, replies and presence — instantly.</p></div>
+          <div class="card"><div class="ico">🤝</div><h3>Friends &amp; DMs</h3><p>Add friends by username and slide into direct messages.</p></div>
+          <div class="card"><div class="ico">🖼️</div><h3>Images &amp; GIFs</h3><p>Drop pictures and GIFs straight into chat. Custom avatars for your profile.</p></div>
+          <div class="card"><div class="ico">🛡️</div><h3>Your data, yours</h3><p>Self-hostable and backed by Supabase Postgres. Leave any server anytime.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="voice" id="voice">
+      <div class="wrap voice-grid">
+        <div>
+          <h2>Hang out in voice</h2>
+          <p>Voice stays connected while you browse other channels. Mute yourself, deafen to focus, and see who's talking at a glance.</p>
+          <ul class="ticks">
+            <li>One-click join from any voice channel</li>
+            <li>Echo cancellation &amp; noise suppression</li>
+            <li>Works server-to-browser with zero setup</li>
+          </ul>
+        </div>
+        <div class="voice-mock" aria-hidden="true">
+          <div class="v-user"><i style="background:#5865f2">Y</i><b>You</b><span class="live">● live</span></div>
+          <div class="v-user"><i style="background:#eb459e">M</i><b>Mia</b><span class="live">● live</span></div>
+          <div class="v-user"><i style="background:#57f287">J</i><b>Jay</b><span class="muted">muted</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="start" id="start">
+      <div class="wrap">
+        <h2>Get started in 3 steps</h2>
+        <ol class="steps">
+          <li><b>1. Run it.</b> The app needs a small Node.js server (one command: <code>./speakit.sh start</code>). GitHub Pages hosts <em>this page</em> — the live app runs wherever you host the server.</li>
+          <li><b>2. Register.</b> Open the app URL, create your account, make a server with the <b>+</b> button.</li>
+          <li><b>3. Invite.</b> Share your server's 8-character code. Friends join with it — or add them by username for DMs.</li>
+        </ol>
+        <div class="invite-box">
+          <span>Got an invite code?</span>
+          <code id="inviteSample">X7KQ2M9P</code>
+          <button class="btn btn-primary" id="copyInvite">Copy sample</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq" id="faq">
+      <div class="wrap">
+        <h2>FAQ</h2>
+        <details open><summary>Is Speakit the same as Discord?</summary><p>No — Speakit is its own app with a familiar feel: servers, channels, voice, DMs and friends.</p></details>
+        <details><summary>Can this page run the app?</summary><p>This page is static hosting (perfect for GitHub Pages). The live chat app runs on a tiny Node.js server — see step 1 above.</p></details>
+        <details><summary>How do I leave a server?</summary><p>Open the server, click “Leave …” at the top. Owners can delete a server the same way.</p></details>
+        <details><summary>Can I change my profile?</summary><p>Yes — display name, status, custom status and a custom uploaded avatar, from Settings.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <span><span class="logo sm">S</span> Speakit — talk more, type less.</span>
+      <span id="year"></span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  authId       String   @unique
+  email        String   @unique
+  username     String   @unique
+  displayName  String
+  avatarColor  String   @default("#5865f2")
+  avatarUrl    String   @default("")
+  status       String   @default("online")
+  customStatus String   @default("")
+  createdAt    DateTime @default(now())
+
+  memberships ServerMember[]
+  ownedServers Server[] @relation("ServerOwner")
+  messages    Message[]
+  dmMessages  DirectMessage[]
+  reactions   Reaction[]
+  sentRequests Friendship[] @relation("FriendRequester")
+  receivedRequests Friendship[] @relation("FriendReceiver")
+  convoA DirectConversation[] @relation("ConvoA")
+  convoB DirectConversation[] @relation("ConvoB")
+}
+
+model Server {
+  id         String   @id @default(cuid())
+  name       String
+  iconColor  String   @default("#5865f2")
+  inviteCode String   @unique
+  ownerId    String
+  createdAt  DateTime @default(now())
+
+  owner    User           @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  channels Channel[]
+  members  ServerMember[]
+}
+
+model ServerMember {
+  id       String   @id @default(cuid())
+  userId   String
+  serverId String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serverId])
+}
+
+model Channel {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("TEXT")
+  topic     String   @default("")
+  serverId  String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  server   Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  messages Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  channelId String
+  authorId  String
+  replyToId String?
+  edited    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replyTo Message? @relation("Reply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies Message[] @relation("Reply")
+  reactions Reaction[]
+  attachments Attachment[]
+}
+
+model Attachment {
+  id              String   @id @default(cuid())
+  messageId       String?
+  directMessageId String?
+  url             String
+  name            String   @default("")
+  size            Int      @default(0)
+  mime            String   @default("")
+  createdAt       DateTime @default(now())
+
+  message       Message?       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  directMessage DirectMessage? @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  requesterId String
+  receiverId  String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  requester User @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver  User @relation("FriendReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId])
+}
+
+model DirectConversation {
+  id             String   @id @default(cuid())
+  participantAId String
+  participantBId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  participantA User @relation("ConvoA", fields: [participantAId], references: [id], onDelete: Cascade)
+  participantB User @relation("ConvoB", fields: [participantBId], references: [id], onDelete: Cascade)
+  messages DirectMessage[]
+
+  @@unique([participantAId, participantBId])
+}
+
+model DirectMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  authorId       String
+  content        String
+  edited         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author       User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  attachments  Attachment[]
+}
