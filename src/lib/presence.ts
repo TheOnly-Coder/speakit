@@ -1,9 +1,14 @@
 /**
  * Shared live-presence registry.
  *
- * IMPORTANT: this module holds in-process state shared by the Socket.IO
- * server (server.ts) and Next.js API routes. It works because the custom
- * server runs everything in a single Node process (single Render instance).
+ * IMPORTANT: the socket server (compiled to `.server/` by tsc) and the Next.js
+ * API routes (bundled by webpack) each load their OWN copy of this module —
+ * module-level `const`s are NOT shared between them even though everything
+ * runs in a single Node process (single Render instance). So all state lives
+ * on `globalThis.__speakit_presence` (same pattern as `__speakit_io_emit` in
+ * bots/emit.ts): every copy reads/writes the same Maps, and `isLive()` /
+ * `visibleStatus()` agree everywhere. Without this, API routes always see an
+ * empty registry and EVERYONE reads as "offline" forever.
  *
  * Rules (Discord-like, automatic):
  * - A user is "live" while at least one socket is connected.
@@ -13,7 +18,18 @@
  * - Otherwise the stored status (online / idle / dnd) is shown.
  */
 
-const liveSockets = new Map<string, Set<string>>(); // userId -> socketIds
+type PresenceShared = {
+  live: Map<string, Set<string>>; // userId -> socketIds
+  idle: Set<string>; // userIds with an ephemeral auto-away overlay (see below)
+};
+
+function shared(): PresenceShared {
+  const g = globalThis as unknown as { __speakit_presence?: PresenceShared };
+  if (!g.__speakit_presence) {
+    g.__speakit_presence = { live: new Map(), idle: new Set() };
+  }
+  return g.__speakit_presence;
+}
 
 /**
  * Ephemeral auto-away overlay (Discord-like idle).
@@ -25,27 +41,25 @@ const liveSockets = new Map<string, Set<string>>(); // userId -> socketIds
  * - Cleared on manual status change, on fresh connect, and on full disconnect
  *   (offline takes precedence over idle).
  */
-const autoIdleUsers = new Set<string>(); // userId
 
 /** Mark a live user as auto-away. */
 export function markAutoIdle(userId: string): void {
-  autoIdleUsers.add(userId);
+  shared().idle.add(userId);
 }
 
 /** Clear the auto-away flag. Returns true if the user was auto-idle. */
 export function clearAutoIdle(userId: string): boolean {
-  if (!autoIdleUsers.has(userId)) return false;
-  autoIdleUsers.delete(userId);
-  return true;
+  return shared().idle.delete(userId);
 }
 
 /** Whether the user is currently auto-away. */
 export function isAutoIdle(userId: string): boolean {
-  return autoIdleUsers.has(userId);
+  return shared().idle.has(userId);
 }
 
 /** Register a socket. Returns true if this is the user's first live socket. */
 export function presenceOnline(userId: string, socketId: string): boolean {
+  const liveSockets = shared().live;
   let set = liveSockets.get(userId);
   if (!set) {
     set = new Set();
@@ -58,6 +72,7 @@ export function presenceOnline(userId: string, socketId: string): boolean {
 
 /** Unregister a socket. Returns true if the user just went fully offline. */
 export function presenceOffline(userId: string, socketId: string): boolean {
+  const liveSockets = shared().live;
   const set = liveSockets.get(userId);
   if (!set) return false;
   set.delete(socketId);
@@ -70,12 +85,12 @@ export function presenceOffline(userId: string, socketId: string): boolean {
 
 /** All socket ids currently live for a user (for targeted emits). */
 export function presenceSockets(userId: string): Set<string> {
-  return liveSockets.get(userId) ?? new Set();
+  return shared().live.get(userId) ?? new Set();
 }
 
 /** Whether the user has any live connection right now. */
 export function isLive(userId: string): boolean {
-  return liveSockets.has(userId);
+  return shared().live.has(userId);
 }
 
 /**
