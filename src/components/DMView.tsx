@@ -123,7 +123,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
           </div>
         )}
         {list.map((m) => (
-          <MessageItem key={m.id} msg={m} onReply={() => {}} onEdit={() => {}} onDelete={() => {}} onReact={() => {}} />
+          <MessageItem key={m.id} msg={m} onReply={() => {}} onEdit={() => {}} onDelete={() => {}} onReact={() => {}} onPin={() => {}} />
         ))}
         <div ref={bottomRef} />
       </div>

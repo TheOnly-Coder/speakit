@@ -96,12 +96,16 @@ export function JoinServerModal({ open, onClose }: { open: boolean; onClose: () 
   );
 }
 
-export function CreateChannelModal({ open, onClose, defaultType }: { open: boolean; onClose: () => void; defaultType: "TEXT" | "VOICE" }) {
+export function CreateChannelModal({ open, onClose, defaultType, categoryId }: { open: boolean; onClose: () => void; defaultType: "TEXT" | "VOICE"; categoryId?: string | null }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<"TEXT" | "VOICE">(defaultType);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const { activeServerId } = useAppStore();
+
+  useEffect(() => {
+    if (open) setType(defaultType);
+  }, [open, defaultType]);
 
   const submit = async () => {
     const clean = name.trim().toLowerCase().replace(/\s+/g, "-");
@@ -120,7 +124,7 @@ export function CreateChannelModal({ open, onClose, defaultType }: { open: boole
       const res = await fetch(`/api/servers/${activeServerId}/channels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: clean, type }),
+        body: JSON.stringify({ name: clean, type, categoryId: categoryId ?? null }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -264,9 +268,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [customStatus, setCustomStatus] = useState(user?.customStatus ?? "");
   const [status, setStatus] = useState(user?.status ?? "online");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? "");
+  const [bannerUrl, setBannerUrl] = useState(user?.bannerUrl ?? "");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
     if (open && user) {
@@ -274,42 +280,48 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setCustomStatus(user.customStatus);
       setStatus(user.status);
       setAvatarUrl(user.avatarUrl ?? "");
+      setBannerUrl(user.bannerUrl ?? "");
       setMsg("");
     }
   }, [open, user]);
 
-  const uploadAvatar = async (file: File | undefined) => {
+  const uploadImage = async (file: File | undefined, kind: "avatar" | "banner") => {
     if (!file || !user) return;
-    if (!["image/png", "image/jpeg", "image/gif", "image/webp"].includes(file.type)) {
-      setMsg("Avatar must be PNG, JPG, GIF or WebP");
+    if (!file.type.startsWith("image/")) {
+      setMsg("Must be an image (GIFs work too — even animated ones)");
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      setMsg("Avatar must be under 8 MB");
+      setMsg("Must be under 8 MB");
       return;
     }
-    setUploadingAvatar(true);
+    if (kind === "avatar") setUploadingAvatar(true);
+    else setUploadingBanner(true);
     setMsg("");
     try {
       const { createClient } = await import("@/lib/supabase");
       const supabase = createClient();
       const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("avatars").upload(path, file, {
         contentType: file.type,
         upsert: false,
       });
       if (error) {
-        setMsg(`Avatar upload failed: ${error.message}`);
+        setMsg(`Upload failed: ${error.message}`);
         return;
       }
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-      setAvatarUrl(data.publicUrl);
-      setMsg("Avatar uploaded — hit Save to apply ✓");
+      if (kind === "avatar") setAvatarUrl(data.publicUrl);
+      else setBannerUrl(data.publicUrl);
+      setMsg(`${kind === "avatar" ? "Avatar" : "Banner"} uploaded — hit Save to apply ✓`);
     } finally {
       setUploadingAvatar(false);
+      setUploadingBanner(false);
     }
   };
+
+  const uploadAvatar = async (file: File | undefined) => uploadImage(file, "avatar");
 
   const save = async () => {
     setBusy(true);
@@ -318,14 +330,14 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       const res = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, customStatus, status, avatarUrl }),
+        body: JSON.stringify({ displayName, customStatus, status, avatarUrl, bannerUrl }),
       });
       const data = await res.json();
       if (!res.ok) {
         setMsg(data.error ?? "Failed to save");
         return;
       }
-      setUser({ ...user!, displayName: data.user.displayName, customStatus: data.user.customStatus, status: data.user.status, avatarUrl: data.user.avatarUrl });
+      setUser({ ...user!, displayName: data.user.displayName, customStatus: data.user.customStatus, status: data.user.status, avatarUrl: data.user.avatarUrl, bannerUrl: data.user.bannerUrl });
       setMsg("Saved ✓");
     } finally {
       setBusy(false);
@@ -334,6 +346,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Modal open={open} onClose={onClose} title="Your profile">
+      <div
+        className="mb-3 h-20 w-full rounded-lg bg-cover bg-center"
+        style={bannerUrl ? { backgroundImage: `url(${bannerUrl})` } : { backgroundColor: user?.avatarColor || "#5865f2" }}
+      />
       <div className="mb-4 flex items-center gap-4">
         <Avatar name={displayName || user?.displayName || "?"} color={user?.avatarColor || "#5865f2"} src={avatarUrl || undefined} size={64} />
         <label className="cursor-pointer rounded-md bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20">
@@ -352,6 +368,25 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           </button>
         )}
       </div>
+      <Field label="Profile banner (images or animated GIFs)">
+        <div className="flex items-center gap-2">
+          <label className="cursor-pointer rounded-md bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20">
+            {uploadingBanner ? "Uploading…" : bannerUrl ? "Replace banner" : "Upload banner"}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingBanner}
+              onChange={(e) => void uploadImage(e.target.files?.[0], "banner")}
+            />
+          </label>
+          {bannerUrl && (
+            <button onClick={() => setBannerUrl("")} className="text-xs text-speakit-muted hover:text-red-400">
+              Remove
+            </button>
+          )}
+        </div>
+      </Field>
       <Field label="Display name">
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={inputCls} maxLength={32} />
       </Field>

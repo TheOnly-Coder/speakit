@@ -7,7 +7,9 @@ import { useChatStore, type ChatMessage } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
 import { MessageItem } from "./MessageItem";
 import { MessageInput } from "./MessageInput";
+import { PinsModal, PinCount, type PinItem } from "./PinsModal";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useProfileStore } from "@/store/useProfileStore";
 import { useVoiceStore } from "@/store/useVoiceStore";
 import { voiceActions } from "@/hooks/useVoice";
 import { Avatar } from "./Avatar";
@@ -35,6 +37,7 @@ function toChatMessage(raw: Record<string, unknown>): ChatMessage {
     content: String(raw.content ?? ""),
     channelId: raw.channelId ? String(raw.channelId) : undefined,
     edited: Boolean(raw.edited),
+    pinned: Boolean(raw.pinned),
     createdAt: String(raw.createdAt),
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
     tempId: raw.tempId ? String(raw.tempId) : undefined,
@@ -103,9 +106,14 @@ export function ChatView({ channelId }: { channelId: string }) {
       addMessage(key, toChatMessage({ ...msg, reactions: [] }));
       scrollToBottom();
     };
-    const onUpdated = (p: { id: string; channelId: string; content: string; edited: boolean; updatedAt: string }) => {
+    const onUpdated = (p: { id: string; channelId: string; content?: string; edited?: boolean; updatedAt?: string; pinned?: boolean }) => {
       if (p.channelId !== channelId) return;
-      updateMessage(key, p.id, { content: p.content, edited: p.edited, updatedAt: p.updatedAt });
+      const patch: Partial<ChatMessage> = {};
+      if (p.content !== undefined) patch.content = p.content;
+      if (p.edited !== undefined) patch.edited = p.edited;
+      if (p.updatedAt !== undefined) patch.updatedAt = p.updatedAt;
+      if (p.pinned !== undefined) patch.pinned = p.pinned;
+      updateMessage(key, p.id, patch);
     };
     const onDeleted = (p: { id: string; channelId: string }) => {
       if (p.channelId !== channelId) return;
@@ -219,6 +227,39 @@ export function ChatView({ channelId }: { channelId: string }) {
     getSocket().emit("reaction:toggle", { messageId: m.id, emoji });
   };
 
+  const handlePin = (m: ChatMessage) => {
+    getSocket().emit("channel:message:pin", { messageId: m.id, pinned: !m.pinned }, (res: unknown) => {
+      const r = res as { ok?: boolean; error?: string };
+      if (!r?.ok && r?.error) alert(r.error);
+    });
+  };
+
+  const [showPins, setShowPins] = useState(false);
+  const [pins, setPins] = useState<PinItem[]>([]);
+
+  const openPins = async () => {
+    setShowPins(true);
+    try {
+      const res = await fetch(`/api/channels/${channelId}/pins`, { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) setPins(data.pins ?? []);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const jumpTo = (messageId: string) => {
+    setShowPins(false);
+    requestAnimationFrame(() => {
+      document.getElementById(`msg-${messageId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
+
+  const unpin = (messageId: string) => {
+    getSocket().emit("channel:message:pin", { messageId, pinned: false });
+    setPins((p) => p.filter((x) => x.id !== messageId));
+  };
+
   if (!channel) return <div className="flex flex-1 items-center justify-center text-speakit-muted">Select a channel</div>;
 
   if (channel.type === "VOICE") {
@@ -232,10 +273,12 @@ export function ChatView({ channelId }: { channelId: string }) {
         <span className="font-bold text-white">{channel.name}</span>
         {channel.topic && <span className="truncate text-xs text-speakit-muted">| {channel.topic}</span>}
         <div className="flex-1" />
+        <PinCount count={list.filter((m) => m.pinned).length} onClick={() => void openPins()} />
         <button onClick={() => setShowMembers(!showMembers)} className="rounded p-1.5 text-speakit-muted hover:text-white" title="Toggle members">
           <Users size={18} />
         </button>
       </div>
+      <PinsModal open={showPins} onClose={() => setShowPins(false)} pins={pins} channelName={channel.name} onJump={jumpTo} onUnpin={unpin} />
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
@@ -249,7 +292,7 @@ export function ChatView({ channelId }: { channelId: string }) {
               </div>
             )}
             {list.map((m) => (
-              <MessageItem key={m.id} msg={m} onReply={setReplyTo} onEdit={setEditing} onDelete={handleDelete} onReact={handleReact} />
+              <MessageItem key={m.id} msg={m} channelServerId={serverDetail?.id} onReply={setReplyTo} onEdit={setEditing} onDelete={handleDelete} onReact={handleReact} onPin={handlePin} />
             ))}
             <div ref={bottomRef} />
           </div>
@@ -272,13 +315,13 @@ export function ChatView({ channelId }: { channelId: string }) {
           <div className="hidden w-60 flex-col gap-0.5 overflow-y-auto bg-[#2b2d31] p-3 lg:flex">
             <div className="mb-2 text-[11px] font-bold uppercase text-speakit-muted">Members — {serverDetail.members.length}</div>
             {serverDetail.members.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-white/5">
+              <button key={m.id} onClick={() => useProfileStore.getState().openProfile(m.id)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5">
                 <Avatar name={m.displayName} color={m.avatarColor} src={m.avatarUrl || undefined} size={32} status={m.status} />
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-white">{m.displayName}</div>
                   <div className="truncate text-[11px] text-speakit-muted">@{m.username}{m.role === "owner" ? " • owner" : ""}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -386,7 +429,7 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
               </div>
               {peers.map((p) => (
                 <div key={p.userId} className="flex flex-col items-center gap-2 rounded-lg bg-[#2b2d31] p-4">
-                  <Avatar name={p.displayName} color={p.avatarColor} size={56} />
+                  <Avatar name={p.displayName} color={p.avatarColor} src={p.avatarUrl || undefined} size={56} />
                   <span className="text-sm font-semibold text-white">{p.displayName}</span>
                   <span className="text-[11px] text-speakit-muted">{p.muted ? "muted" : "live"}</span>
                 </div>

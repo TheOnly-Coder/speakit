@@ -6,6 +6,36 @@
   color-scheme: dark;
 }
 
+html.light {
+  color-scheme: light;
+}
+
+/* Light theme: remap our dark palette surfaces to light ones */
+html.light body {
+  background: #f2f3f5;
+  color: #232428;
+}
+html.light .bg-speakit-bg { background-color: #ffffff; }
+html.light .bg-speakit-sidebar { background-color: #f2f3f5; }
+html.light .bg-speakit-rail { background-color: #e3e5e8; }
+html.light .bg-speakit-input { background-color: #ebedef; }
+html.light .bg-\[\#232428\] { background-color: #e3e5e8; }
+html.light .bg-\[\#2b2d31\] { background-color: #f2f3f5; }
+html.light .text-white { color: #232428; }
+html.light .text-speakit-text { color: #2e3338; }
+html.light .text-speakit-muted { color: #5c6067; }
+html.light .border-black\/30 { border-color: #00000018; }
+html.light .hover\:bg-white\/5:hover { background-color: #00000010; }
+html.light .hover\:bg-white\/10:hover { background-color: #00000014; }
+html.light .bg-white\/10 { background-color: #00000012; }
+html.light .bg-white\/5 { background-color: #00000008; }
+html.light * {
+  scrollbar-color: #b5bac1 transparent;
+}
+html.light *::-webkit-scrollbar-thumb {
+  background: #b5bac1;
+}
+
 html,
 body,
 #__next {

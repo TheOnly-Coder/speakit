@@ -5,6 +5,7 @@ export type VoicePeer = {
   username: string;
   displayName: string;
   avatarColor: string;
+  avatarUrl: string;
   muted: boolean;
   deafened: boolean;
   speaking: boolean;

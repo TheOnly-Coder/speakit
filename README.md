@@ -15,9 +15,12 @@ Speakit is a full-stack Discord clone: servers, text + voice channels, real-time
 
 1. Create the project (done) and note URL + publishable key in `.env`.
 2. **SQL Editor → New query** → paste `scripts/supabase-storage.sql` → Run
-   (creates the `chat-uploads` + `avatars` buckets and their policies).
+   (creates the `chat-uploads`, `avatars` and `emojis` buckets and their policies;
+   re-run after updating Speakit — the file is idempotent).
 3. **Authentication → Providers → Email → turn OFF "Confirm email"**
    (otherwise every registration parks at "check your inbox").
+4. Optional GIF search: Google Cloud Console → enable the **Tenor API** → key into
+   `TENOR_API_KEY` (server env + Render env). Without it the GIF button explains itself.
 
 ## Run it
 
@@ -63,14 +66,37 @@ Alternatives if you outgrow it: Koyeb free tier, Fly.io allowances, or any VPS.
 ## Features
 
 - Auth (Supabase: email register, username-or-email login, logout, sessions)
-- Servers (create, join via invite, **leave**/delete)
-- Channels (text + voice, create/delete)
-- Real-time messages (send/edit/delete, replies, optimistic UI)
-- **Images & GIFs** in channels + DMs (Supabase Storage, 8 MB max)
+- Servers (create, join via code/link/directory, custom icons, **leave**/delete)
+- Server settings: overview, channel **categories**, **roles & permissions**, custom emoji, members (**kick/ban**), invites (regenerate + custom codes at 10 members), discovery
+- Channels (text + voice, create/delete/move between categories)
+- Real-time messages (**500 chars**, send/edit/delete, replies, optimistic UI, auto-delete after 7 days)
+- **Pins** (per channel, with jump-to)
+- **Images, GIFs & audio** in channels + DMs (Supabase Storage, 8 MB max)
+- **Emoji picker**, **server custom emoji** (`:name:`), cross-server toggle, custom-emoji reactions
+- **Tenor GIF search + favorites**
 - Reactions, typing indicators, presence
 - Friends (request/accept/decline) + DMs (real-time)
-- **Profiles** (display name, status, custom status, uploaded avatar)
-- Voice channels (join, mute/deafen, peer grid, WebRTC audio)
+- **Profiles** (display name, status, custom status, uploaded avatar incl. GIFs, banners incl. animated)
+- **Light + dark mode**
+- Voice channels (join, mute/deafen, peer grid with pfps + names, WebRTC audio)
+
+## Custom domain (put the app on your website)
+
+The app lives at `https://speakit-hmds.onrender.com`. To serve it from your own
+domain (e.g. `chat.yourdomain.com`):
+
+1. Render dashboard → your service → **Settings → Custom Domains** → **Add** →
+   type `chat.yourdomain.com`. Render shows you the DNS target (your
+   `*.onrender.com` hostname).
+2. At your domain registrar (where you bought the domain) → **DNS settings** →
+   add a **CNAME** record: Host/Name `chat`, Value/Target `speakit-hmds.onrender.com`.
+   (Use any subdomain — never CNAME the bare root domain; roots need ALIAS/ANAME
+   records where supported, or just use `www`.)
+3. Wait for DNS (minutes to hours) → Render auto-issues HTTPS → your subdomain works.
+4. On your GitHub Pages site, link the buttons to `https://chat.yourdomain.com`
+   (see `speakit-website/`).
+
+No custom domain? Just link straight to the `*.onrender.com` URL — zero DNS needed.
 
 ## Project layout
 

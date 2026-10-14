@@ -16,6 +16,7 @@ export async function GET() {
     id: m.server.id,
     name: m.server.name,
     iconColor: m.server.iconColor,
+    iconUrl: m.server.iconUrl,
     inviteCode: m.server.inviteCode,
     ownerId: m.server.ownerId,
     memberCount: m.server._count.members,

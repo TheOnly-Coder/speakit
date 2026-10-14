@@ -1,0 +1,127 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Search, Star, Loader2 } from "lucide-react";
+import type { GifFavorite } from "@/store/useAppStore";
+
+export type PickedGif = { url: string; preview: string; title: string };
+
+export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
+  const [tab, setTab] = useState<"search" | "favorites">("search");
+  const [q, setQ] = useState("");
+  const [gifs, setGifs] = useState<PickedGif[]>([]);
+  const [favs, setFavs] = useState<GifFavorite[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [unconfigured, setUnconfigured] = useState(false);
+
+  const load = useCallback(async (query: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/gifs/search?q=${encodeURIComponent(query)}`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "GIF search failed");
+        setUnconfigured(!!data.unconfigured);
+        setGifs([]);
+        return;
+      }
+      setGifs(data.gifs ?? []);
+    } catch {
+      setError("GIF search failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadFavs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/gifs/favorites", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) setFavs(data.gifs ?? []);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === "search") void load("");
+    else void loadFavs();
+  }, [tab, load, loadFavs]);
+
+  useEffect(() => {
+    if (tab !== "search") return;
+    const t = setTimeout(() => void load(q), q ? 400 : 0);
+    return () => clearTimeout(t);
+  }, [q, tab, load]);
+
+  const toggleFav = async (gif: PickedGif, isFav: boolean) => {
+    if (isFav) {
+      await fetch(`/api/gifs/favorites?url=${encodeURIComponent(gif.url)}`, { method: "DELETE" });
+      setFavs((f) => f.filter((x) => x.url !== gif.url));
+    } else {
+      const res = await fetch("/api/gifs/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: gif.url, preview: gif.preview }),
+      });
+      const data = await res.json();
+      if (res.ok && data.gif) setFavs((f) => [data.gif, ...f]);
+    }
+  };
+
+  const favUrls = new Set(favs.map((f) => f.url));
+
+  return (
+    <div className="w-80 rounded-lg bg-[#1e1f22] p-2 shadow-2xl">
+      <div className="mb-2 flex gap-1">
+        <button onClick={() => setTab("search")} className={`flex flex-1 items-center justify-center gap-1 rounded px-2 py-1.5 text-xs font-semibold ${tab === "search" ? "bg-speakit-blurple text-white" : "text-speakit-muted hover:bg-white/5"}`}>
+          <Search size={13} /> Search
+        </button>
+        <button onClick={() => setTab("favorites")} className={`flex flex-1 items-center justify-center gap-1 rounded px-2 py-1.5 text-xs font-semibold ${tab === "favorites" ? "bg-speakit-blurple text-white" : "text-speakit-muted hover:bg-white/5"}`}>
+          <Star size={13} /> Favorites
+        </button>
+      </div>
+      {tab === "search" && (
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search Tenor GIFs…"
+          className="mb-2 w-full rounded bg-speakit-input px-2 py-1.5 text-sm text-white outline-none placeholder:text-speakit-muted"
+        />
+      )}
+      {loading && <div className="flex items-center justify-center py-6 text-speakit-muted"><Loader2 size={18} className="animate-spin" /></div>}
+      {error && (
+        <div className="px-2 py-4 text-center text-xs text-speakit-muted">
+          {unconfigured
+            ? "GIF search needs a Tenor key. Server admin: add TENOR_API_KEY to the environment (Google Cloud Console → Tenor API)."
+            : error}
+        </div>
+      )}
+      {!loading && !error && (
+        <div className="grid max-h-64 grid-cols-2 gap-1.5 overflow-y-auto">
+          {(tab === "search" ? gifs : favs.map((f) => ({ url: f.url, preview: f.preview || f.url, title: "GIF" }))).map((g) => (
+            <div key={g.url} className="group relative overflow-hidden rounded-md bg-black/30">
+              <button onClick={() => onPick(g)} className="block w-full">
+                <img src={g.preview || g.url} alt={g.title} loading="lazy" className="h-24 w-full object-cover hover:opacity-90" />
+              </button>
+              <button
+                onClick={() => void toggleFav(g, favUrls.has(g.url))}
+                title={favUrls.has(g.url) ? "Unfavorite" : "Favorite"}
+                className={`absolute right-1 top-1 rounded bg-black/60 p-1 ${favUrls.has(g.url) ? "text-yellow-400" : "text-white/70 hover:text-yellow-400"}`}
+              >
+                <Star size={13} fill={favUrls.has(g.url) ? "currentColor" : "none"} />
+              </button>
+            </div>
+          ))}
+          {((tab === "search" && gifs.length === 0) || (tab === "favorites" && favs.length === 0)) && (
+            <div className="col-span-2 px-2 py-4 text-center text-xs text-speakit-muted">
+              {tab === "favorites" ? "Star GIFs to find them here." : "No GIFs found."}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

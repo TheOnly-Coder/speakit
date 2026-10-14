@@ -61,7 +61,7 @@ export async function POST(req: Request, { params }: { params: { channelId: stri
 
   const message = await prisma.message.create({
     data: {
-      content: parsed.data.content.trim().slice(0, 4000),
+      content: parsed.data.content.trim().slice(0, 500),
       channelId: params.channelId,
       authorId: userId,
       replyToId: parsed.data.replyToId,

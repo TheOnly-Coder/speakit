@@ -13,6 +13,11 @@ export async function POST(req: Request) {
   const server = await prisma.server.findUnique({ where: { inviteCode: parsed.data.inviteCode } });
   if (!server) return NextResponse.json({ error: "Server not found. Check the invite code." }, { status: 404 });
 
+  const banned = await prisma.ban.findUnique({
+    where: { serverId_userId: { serverId: server.id, userId } },
+  });
+  if (banned) return NextResponse.json({ error: "You are banned from this server." }, { status: 403 });
+
   const existing = await prisma.serverMember.findUnique({
     where: { userId_serverId: { userId, serverId: server.id } },
   });

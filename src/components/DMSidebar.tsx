@@ -5,6 +5,7 @@ import { UserPlus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useProfileStore } from "@/store/useProfileStore";
 import { Avatar } from "./Avatar";
 
 export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => void; onOpenSettings: () => void }) {
@@ -41,13 +42,13 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
             <div className="px-2 py-1 text-[11px] font-bold uppercase text-speakit-muted">Friends — {friends.length}</div>
             {friends.length === 0 && <div className="px-2 text-xs text-speakit-muted">No friends yet. Add someone!</div>}
             {friends.map((f) => (
-              <div key={f.id} className="flex items-center gap-2 rounded px-2 py-1.5 hover:bg-white/5">
+              <button key={f.id} onClick={() => useProfileStore.getState().openProfile(f.id)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5">
                 <Avatar name={f.displayName} color={f.avatarColor} src={f.avatarUrl || undefined} size={32} status={f.status} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-white">{f.displayName}</div>
                   <div className="truncate text-[11px] text-speakit-muted">@{f.username}</div>
                 </div>
-              </div>
+              </button>
             ))}
             <div className="px-2 py-1 pt-3 text-[11px] font-bold uppercase text-speakit-muted">Direct Messages</div>
             {conversations.map((c) => (

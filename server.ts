@@ -37,6 +37,7 @@ type VoiceParticipant = {
   username: string;
   displayName: string;
   avatarColor: string;
+  avatarUrl: string;
   socketId: string;
   muted: boolean;
   deafened: boolean;
@@ -67,6 +68,24 @@ async function getUserFromToken(token: string) {
   } catch {
     return null;
   }
+}
+
+async function memberCan(userId: string, serverId: string, perm: string): Promise<boolean> {
+  const member = await prisma.serverMember.findUnique({
+    where: { userId_serverId: { userId, serverId } },
+    include: { memberRoles: { include: { role: true } } },
+  });
+  if (!member) return false;
+  if (member.role === "owner") return true;
+  for (const mr of member.memberRoles) {
+    try {
+      const list = JSON.parse(mr.role.permissions) as string[];
+      if (list.includes(perm)) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
 }
 
 async function isServerMember(userId: string, serverId: string) {
@@ -156,6 +175,59 @@ void app.prepare().then(() => {
       }
     });
 
+    // Ask every client viewing this server to refetch its detail.
+    socket.on("server:refresh", async ({ serverId }: { serverId: string }) => {
+      try {
+        if (!serverId || !(await isServerMember(userId, serverId))) return;
+        io.to(`server:${serverId}`).emit("server:updated", { serverId });
+      } catch {
+        /* ignore */
+      }
+    });
+
+    // Kick / ban / unban with live notification to the target.
+    socket.on(
+      "server:member:action",
+      async (
+        payload: { serverId: string; memberUserId: string; action: "kick" | "ban" | "unban"; reason?: string },
+        ack?: (res: unknown) => void
+      ) => {
+        try {
+          const { serverId, memberUserId, action } = payload ?? ({} as typeof payload);
+          if (!serverId || !memberUserId || !["kick", "ban", "unban"].includes(action)) {
+            return ack?.({ error: "Invalid request" });
+          }
+          const need = action === "unban" || action === "ban" ? "banMembers" : "kickMembers";
+          if (!(await memberCan(userId, serverId, need))) {
+            return ack?.({ error: `Missing permission: ${need === "banMembers" ? "Ban" : "Kick"} members` });
+          }
+          if (memberUserId === userId) return ack?.({ error: "You can't remove yourself" });
+          const server = await prisma.server.findUnique({ where: { id: serverId } });
+          if (!server) return ack?.({ error: "Not found" });
+          if (server.ownerId === memberUserId) return ack?.({ error: "Cannot remove the owner" });
+
+          await prisma.serverMember.deleteMany({ where: { userId: memberUserId, serverId } });
+          if (action === "ban") {
+            await prisma.ban.upsert({
+              where: { serverId_userId: { serverId, userId: memberUserId } },
+              create: { serverId, userId: memberUserId, reason: String(payload.reason ?? "").slice(0, 256) },
+              update: { reason: String(payload.reason ?? "").slice(0, 256) },
+            });
+          } else if (action === "unban") {
+            await prisma.ban.deleteMany({ where: { serverId, userId: memberUserId } });
+          }
+          io.to(`server:${serverId}`).emit("server:updated", { serverId });
+          if (action === "kick" || action === "ban") {
+            io.to(`user:${memberUserId}`).emit("server:kicked", { serverId, action });
+          }
+          ack?.({ ok: true });
+        } catch (e) {
+          console.error("member action error", e);
+          ack?.({ error: "Failed" });
+        }
+      }
+    );
+
     socket.on("channel:join", async ({ channelId }: { channelId: string }, ack?: (res: unknown) => void) => {
       try {
         const channel = await canAccessChannel(userId, channelId);
@@ -176,7 +248,7 @@ void app.prepare().then(() => {
         ack?: (res: unknown) => void
       ) => {
         try {
-          const content = String(payload?.content ?? "").trim().slice(0, 4000);
+          const content = String(payload?.content ?? "").trim().slice(0, 500);
           if (!payload?.channelId || !content) return ack?.({ error: "Message cannot be empty" });
           const channel = await canAccessChannel(userId, payload.channelId);
           if (!channel) return ack?.({ error: "Forbidden" });
@@ -230,7 +302,7 @@ void app.prepare().then(() => {
         const msg = await prisma.message.findUnique({ where: { id: messageId } });
         if (!msg) return ack?.({ error: "Not found" });
         if (msg.authorId !== userId) return ack?.({ error: "Only author can edit" });
-        const clean = String(content ?? "").trim().slice(0, 4000);
+        const clean = String(content ?? "").trim().slice(0, 500);
         if (!clean) return ack?.({ error: "Message cannot be empty" });
         const updated = await prisma.message.update({
           where: { id: messageId },
@@ -250,13 +322,34 @@ void app.prepare().then(() => {
       }
     });
 
+    socket.on("channel:message:pin", async ({ messageId, pinned }: { messageId: string; pinned: boolean }, ack?: (res: unknown) => void) => {
+      try {
+        const msg = await prisma.message.findUnique({ where: { id: messageId }, include: { channel: true } });
+        if (!msg) return ack?.({ error: "Not found" });
+        const managed = await memberCan(userId, msg.channel.serverId, "managePins");
+        if (msg.authorId !== userId && !managed) return ack?.({ error: "Missing permission: Manage pins" });
+        if (pinned) {
+          const count = await prisma.message.count({ where: { channelId: msg.channelId, pinned: true } });
+          if (count >= 50) return ack?.({ error: "Pin limit reached (50 per channel)" });
+        }
+        await prisma.message.update({ where: { id: msg.id }, data: { pinned: !!pinned } });
+        io.to(`channel:${msg.channelId}`).emit("channel:message:updated", {
+          id: msg.id,
+          channelId: msg.channelId,
+          pinned: !!pinned,
+        });
+        ack?.({ ok: true });
+      } catch (e) {
+        ack?.({ error: "Failed to pin" });
+      }
+    });
+
     socket.on("channel:message:delete", async ({ messageId }: { messageId: string }, ack?: (res: unknown) => void) => {
       try {
         const msg = await prisma.message.findUnique({ where: { id: messageId }, include: { channel: true } });
         if (!msg) return ack?.({ error: "Not found" });
-        const server = await prisma.server.findUnique({ where: { id: msg.channel.serverId } });
-        const isOwner = server?.ownerId === userId;
-        if (msg.authorId !== userId && !isOwner) return ack?.({ error: "Cannot delete" });
+        const canManage = await memberCan(userId, msg.channel.serverId, "manageMessages");
+        if (msg.authorId !== userId && !canManage) return ack?.({ error: "Cannot delete" });
         await prisma.message.delete({ where: { id: messageId } });
         io.to(`channel:${msg.channelId}`).emit("channel:message:deleted", { id: messageId, channelId: msg.channelId });
         ack?.({ ok: true });
@@ -267,7 +360,7 @@ void app.prepare().then(() => {
 
     socket.on("reaction:toggle", async ({ messageId, emoji }: { messageId: string; emoji: string }, ack?: (res: unknown) => void) => {
       try {
-        const clean = String(emoji ?? "").slice(0, 16);
+        const clean = String(emoji ?? "").slice(0, 64);
         if (!clean || !messageId) return ack?.({ error: "Invalid reaction" });
         const msg = await prisma.message.findUnique({ where: { id: messageId }, include: { channel: true } });
         if (!msg) return ack?.({ error: "Not found" });
@@ -328,7 +421,7 @@ void app.prepare().then(() => {
       "dm:message:send",
       async (payload: { conversationId: string; content: string; tempId?: string; attachments?: unknown }, ack?: (res: unknown) => void) => {
         try {
-          const content = String(payload?.content ?? "").trim().slice(0, 4000);
+          const content = String(payload?.content ?? "").trim().slice(0, 500);
           if (!payload?.conversationId || !content) return ack?.({ error: "Message cannot be empty" });
           const convo = await canAccessConversation(userId, payload.conversationId);
           if (!convo) return ack?.({ error: "Forbidden" });
@@ -400,6 +493,7 @@ void app.prepare().then(() => {
           username: u.username,
           displayName: u.displayName,
           avatarColor: u.avatarColor,
+          avatarUrl: (u as { avatarUrl?: string }).avatarUrl ?? "",
           socketId: socket.id,
           muted: false,
           deafened: false,
@@ -411,7 +505,7 @@ void app.prepare().then(() => {
         ack?.({ ok: true, users: existingUsers });
         socket.to(`voice:${channelId}`).emit("voice:user-joined", {
           channelId,
-          user: { userId, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor },
+          user: { userId, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor, avatarUrl: (u as { avatarUrl?: string }).avatarUrl ?? "" },
         });
         io.to(`voice:${channelId}`).emit("voice:users", { channelId, users: [...room.values()].map((p) => ({ ...p, socketId: undefined })) });
         io.to(`server:${channel.serverId}`).emit("voice:channel:update", { channelId, serverId: channel.serverId, users: [...room.keys()] });
@@ -494,6 +588,25 @@ void app.prepare().then(() => {
       }
     });
   });
+
+  // Auto-delete messages older than 7 days (channels + DMs), every hour.
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  async function pruneOldMessages() {
+    try {
+      const cutoff = new Date(Date.now() - SEVEN_DAYS);
+      const [channels, dms] = await Promise.all([
+        prisma.message.deleteMany({ where: { createdAt: { lt: cutoff } } }),
+        prisma.directMessage.deleteMany({ where: { createdAt: { lt: cutoff } } }),
+      ]);
+      if (channels.count + dms.count > 0) {
+        console.log(`🧹 Auto-deleted ${channels.count} channel + ${dms.count} DM messages older than 7 days`);
+      }
+    } catch (e) {
+      console.error("retention prune failed", e);
+    }
+  }
+  void pruneOldMessages();
+  setInterval(pruneOldMessages, 60 * 60 * 1000).unref?.();
 
   httpServer.on("error", (err: NodeJS.ErrnoException) => {
     if (err?.code === "EADDRINUSE") {

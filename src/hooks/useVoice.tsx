@@ -103,16 +103,16 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         channelRef.current = cid;
         setChannel(cid, sid);
 
-        const ack: { ok?: boolean; users?: { userId: string; username: string; displayName: string; avatarColor: string }[]; error?: string } =
+        const ack: { ok?: boolean; users?: { userId: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string }[]; error?: string } =
           await new Promise((resolve) => {
             socket.emit("voice:join", { channelId: cid }, (res: unknown) => resolve(res as { ok?: boolean; users?: never[] }));
           });
 
         if (ack?.error) throw new Error(ack.error);
-        const existing = (ack?.users ?? []).filter((u) => u.userId !== me.id);
-        setPeers(
-          existing.map((u) => ({ userId: u.userId, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor, muted: false, deafened: false, speaking: false }))
-        );
+      const existing = (ack?.users ?? []).filter((u) => u.userId !== me.id);
+      setPeers(
+        existing.map((u) => ({ userId: u.userId, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor, avatarUrl: u.avatarUrl ?? "", muted: false, deafened: false, speaking: false }))
+      );
 
         // Initiate offers to existing peers (joiner dials; existing peers answer)
         for (const peer of existing) {
@@ -189,10 +189,10 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         console.error("signal handling failed", e);
       }
     };
-    const onUserJoined = (msg: { channelId: string; user: { userId: string; username: string; displayName: string; avatarColor: string } }) => {
+    const onUserJoined = (msg: { channelId: string; user: { userId: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string } }) => {
       if (msg.channelId !== channelRef.current) return;
       if (msg.user.userId === useAuthStore.getState().user?.id) return;
-      upsertPeer({ userId: msg.user.userId, username: msg.user.username, displayName: msg.user.displayName, avatarColor: msg.user.avatarColor, muted: false, deafened: false, speaking: false });
+      upsertPeer({ userId: msg.user.userId, username: msg.user.username, displayName: msg.user.displayName, avatarColor: msg.user.avatarColor, avatarUrl: msg.user.avatarUrl ?? "", muted: false, deafened: false, speaking: false });
     };
     const onUserLeft = (msg: { channelId: string; userId: string }) => {
       if (msg.channelId !== channelRef.current) return;
@@ -208,10 +208,10 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         return next;
       });
     };
-    const onUsers = (msg: { channelId: string; users: { userId: string; username: string; displayName: string; avatarColor: string; muted: boolean; deafened: boolean; speaking: boolean }[] }) => {
+    const onUsers = (msg: { channelId: string; users: { userId: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string; muted: boolean; deafened: boolean; speaking: boolean }[] }) => {
       if (msg.channelId !== channelRef.current) return;
       const selfId = useAuthStore.getState().user?.id;
-      setPeers(msg.users.filter((u) => u.userId !== selfId).map((u) => ({ ...u })));
+      setPeers(msg.users.filter((u) => u.userId !== selfId).map((u) => ({ ...u, avatarUrl: u.avatarUrl ?? "" })));
     };
     const onState = (msg: { channelId: string; userId: string; muted: boolean; deafened: boolean; speaking: boolean }) => {
       if (msg.channelId !== channelRef.current) return;

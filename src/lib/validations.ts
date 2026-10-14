@@ -28,7 +28,7 @@ export const createChannelSchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
-  content: z.string().min(1).max(4000),
+  content: z.string().min(1).max(500),
   replyToId: z.string().optional(),
   attachments: z.unknown().optional(),
 });

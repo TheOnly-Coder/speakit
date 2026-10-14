@@ -16,6 +16,7 @@ model User {
   displayName  String
   avatarColor  String   @default("#5865f2")
   avatarUrl    String   @default("")
+  bannerUrl    String   @default("")
   status       String   @default("online")
   customStatus String   @default("")
   createdAt    DateTime @default(now())
@@ -27,21 +28,29 @@ model User {
   reactions   Reaction[]
   sentRequests Friendship[] @relation("FriendRequester")
   receivedRequests Friendship[] @relation("FriendReceiver")
+  favoriteGifs FavoriteGif[]
   convoA DirectConversation[] @relation("ConvoA")
   convoB DirectConversation[] @relation("ConvoB")
 }
 
 model Server {
-  id         String   @id @default(cuid())
-  name       String
-  iconColor  String   @default("#5865f2")
-  inviteCode String   @unique
-  ownerId    String
-  createdAt  DateTime @default(now())
+  id                String   @id @default(cuid())
+  name              String
+  iconColor         String   @default("#5865f2")
+  iconUrl           String   @default("")
+  inviteCode        String   @unique
+  discoverable      Boolean  @default(false)
+  allowExternalEmoji Boolean @default(true)
+  ownerId           String
+  createdAt         DateTime @default(now())
 
-  owner    User           @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  channels Channel[]
-  members  ServerMember[]
+  owner        User             @relation("ServerOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  channels     Channel[]
+  members      ServerMember[]
+  categories   ServerCategory[]
+  roles        Role[]
+  bans         Ban[]
+  customEmojis CustomEmoji[]
 }
 
 model ServerMember {
@@ -51,22 +60,93 @@ model ServerMember {
   role     String   @default("member")
   joinedAt DateTime @default(now())
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server     Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  memberRoles MemberRole[]
 
   @@unique([userId, serverId])
 }
 
-model Channel {
-  id        String   @id @default(cuid())
-  name      String
-  type      String   @default("TEXT")
-  topic     String   @default("")
-  serverId  String
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
+model ServerCategory {
+  id       String   @id @default(cuid())
+  serverId String
+  name     String
+  position Int      @default(0)
 
   server   Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channels Channel[]
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  serverId    String
+  name        String
+  color       String   @default("#99aab5")
+  position    Int      @default(0)
+  permissions String   @default("[]")
+
+  server      Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  memberRoles MemberRole[]
+}
+
+model MemberRole {
+  id       String @id @default(cuid())
+  memberId String
+  roleId   String
+
+  member ServerMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role   Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, roleId])
+}
+
+model Ban {
+  id       String   @id @default(cuid())
+  serverId String
+  userId   String
+  reason   String   @default("")
+  createdAt DateTime @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+}
+
+model CustomEmoji {
+  id       String   @id @default(cuid())
+  serverId String
+  name     String
+  url      String
+  animated Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, name])
+}
+
+model FavoriteGif {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  preview   String   @default("")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Channel {
+  id         String   @id @default(cuid())
+  name       String
+  type       String   @default("TEXT")
+  topic      String   @default("")
+  serverId   String
+  categoryId String?
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  server   Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  category ServerCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   messages Message[]
 }
 
@@ -77,6 +157,7 @@ model Message {
   authorId  String
   replyToId String?
   edited    Boolean  @default(false)
+  pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

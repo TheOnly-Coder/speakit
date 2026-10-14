@@ -38,7 +38,8 @@ async function main() {
   assert(!createChannelSchema.safeParse({ serverId: "s", name: "Bad Name!", type: "TEXT" }).success, "channel rejects uppercase/spaces");
   assert(createChannelSchema.safeParse({ serverId: "s", name: "announcements", type: "TEXT" }).success, "channel accepts good name");
   assert(!sendMessageSchema.safeParse({ content: "" }).success, "message rejects empty");
-  assert(!sendMessageSchema.safeParse({ content: "x".repeat(4001) }).success, "message rejects >4000 chars");
+  assert(!sendMessageSchema.safeParse({ content: "x".repeat(501) }).success, "message rejects >500 chars");
+  assert(sendMessageSchema.safeParse({ content: "x".repeat(500) }).success, "message accepts 500 chars");
 
   console.log("3) attachment sanitizer");
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -137,21 +138,53 @@ async function main() {
   });
   assert(customized.displayName === "Smoke A*" && customized.avatarUrl === avatar, "profile fields update");
 
-  console.log("8) membership gating (canAccess parity)");
+  console.log("9) categories, roles, pins, emoji, bans, discovery");
   const outsider = await prisma.user.create({
     data: { authId: `smoke-auth-c-${ts}`, email: `smoke_c_${ts}@example.test`, username: `smoke_c_${ts}`, displayName: "Smoke C", avatarColor: "#eb459e" },
   });
+  const cat = await prisma.serverCategory.create({ data: { serverId: server.id, name: "Gaming", position: 0 } });
+  const catChan = await prisma.channel.create({ data: { name: "clips", type: "TEXT", serverId: server.id, categoryId: cat.id, position: 9 } });
+  assert(catChan.categoryId === cat.id, "channel in category");
+  const role = await prisma.role.create({ data: { serverId: server.id, name: "Mod", color: "#ff0000", permissions: JSON.stringify(["manageMessages", "kickMembers"]), position: 0 } });
+  const memberB = await prisma.serverMember.findUnique({ where: { userId_serverId: { userId: ub.id, serverId: server.id } } });
+  await prisma.memberRole.create({ data: { memberId: memberB!.id, roleId: role.id } });
+  const assigned = await prisma.memberRole.count({ where: { memberId: memberB!.id } });
+  assert(assigned === 1, "role assigned");
+  await prisma.message.update({ where: { id: m1.id }, data: { pinned: true } });
+  const pins = await prisma.message.count({ where: { channelId: text.id, pinned: true } });
+  assert(pins === 1, "pin works");
+  const emoji = await prisma.customEmoji.create({ data: { serverId: server.id, name: "party_test", url: `${base}/storage/v1/object/public/emojis/x.png`, animated: false } });
+  assert(emoji.name === "party_test", "custom emoji created");
+  let dupEmoji = false;
+  try {
+    await prisma.customEmoji.create({ data: { serverId: server.id, name: "party_test", url: `${base}/storage/v1/object/public/emojis/y.png`, animated: false } });
+  } catch {
+    dupEmoji = true;
+  }
+  assert(dupEmoji, "duplicate emoji name rejected");
+  const fav = await prisma.favoriteGif.create({ data: { userId: ua.id, url: "https://media.tenor.com/abc.gif", preview: "https://media.tenor.com/abc_tiny.gif" } });
+  assert(!!fav.id, "gif favorite stored");
+  await prisma.server.update({ where: { id: server.id }, data: { discoverable: true } });
+  const found = await prisma.server.count({ where: { discoverable: true } });
+  assert(found >= 1, "discoverable flag works");
+  const ban = await prisma.ban.create({ data: { serverId: server.id, userId: outsider.id, reason: "test" } });
+  assert(!!ban.id, "ban recorded");
+
+  console.log("10) membership gating + leave + unban");
   const outsiderMember = await prisma.serverMember.findUnique({
     where: { userId_serverId: { userId: outsider.id, serverId: server.id } },
   });
   assert(outsiderMember === null, "outsider is not a member");
-  const memberB = await prisma.serverMember.findUnique({
+  const memberBCheck = await prisma.serverMember.findUnique({
     where: { userId_serverId: { userId: ub.id, serverId: server.id } },
   });
-  assert(memberB !== null, "member recognized");
+  assert(memberBCheck !== null, "member recognized");
   await prisma.serverMember.deleteMany({ where: { userId: ub.id, serverId: server.id } });
   const left = await prisma.serverMember.findUnique({ where: { userId_serverId: { userId: ub.id, serverId: server.id } } });
   assert(left === null, "leave server works");
+  await prisma.ban.deleteMany({ where: { serverId: server.id, userId: outsider.id } });
+  const unbanned = await prisma.ban.findUnique({ where: { serverId_userId: { serverId: server.id, userId: outsider.id } } });
+  assert(unbanned === null, "unban works");
 
   console.log("cleanup");
   await prisma.user.deleteMany({ where: { username: { startsWith: "smoke_" } } });

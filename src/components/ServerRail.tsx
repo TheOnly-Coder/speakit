@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Plus, Compass } from "lucide-react";
+import { Home, Plus, Link2, Compass } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { ServerIcon } from "./Avatar";
 import { cn } from "@/lib/utils";
@@ -8,10 +8,12 @@ import { cn } from "@/lib/utils";
 export function ServerRail({
   onAdd,
   onJoin,
+  onBrowse,
   onHome,
 }: {
   onAdd: () => void;
   onJoin: () => void;
+  onBrowse: () => void;
   onHome: () => void;
 }) {
   const { servers, activeServerId, setActiveServer, view } = useAppStore();
@@ -31,7 +33,26 @@ export function ServerRail({
       <div className="h-0.5 w-8 rounded bg-white/10" />
       {servers.map((s) => (
         <button key={s.id} title={s.name} onClick={() => setActiveServer(s.id)}>
-          <ServerIcon name={s.name} color={s.iconColor} active={activeServerId === s.id} />
+          {s.iconUrl ? (
+            <div className="group relative flex items-center">
+              <div
+                className={cn(
+                  "absolute -left-4 w-1 rounded-r-full bg-white transition-all",
+                  activeServerId === s.id ? "h-10" : "h-0 group-hover:h-5"
+                )}
+              />
+              <img
+                src={s.iconUrl}
+                alt={s.name}
+                className={cn(
+                  "h-12 w-12 object-cover transition-all",
+                  activeServerId === s.id ? "rounded-2xl" : "rounded-full group-hover:rounded-2xl"
+                )}
+              />
+            </div>
+          ) : (
+            <ServerIcon name={s.name} color={s.iconColor} active={activeServerId === s.id} />
+          )}
         </button>
       ))}
       <button
@@ -43,7 +64,14 @@ export function ServerRail({
       </button>
       <button
         onClick={onJoin}
-        title="Join server"
+        title="Join with invite link"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-speakit-sidebar text-speakit-green transition-all hover:rounded-2xl hover:bg-speakit-green hover:text-white"
+      >
+        <Link2 size={20} />
+      </button>
+      <button
+        onClick={onBrowse}
+        title="Browse public servers"
         className="flex h-12 w-12 items-center justify-center rounded-full bg-speakit-sidebar text-speakit-green transition-all hover:rounded-2xl hover:bg-speakit-green hover:text-white"
       >
         <Compass size={22} />

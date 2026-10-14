@@ -47,14 +47,14 @@ export async function POST(req: Request, { params }: { params: { conversationId:
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await req.json();
-  const parsed = z.object({ content: z.string().min(1).max(4000), attachments: z.unknown().optional() }).safeParse(body);
+  const parsed = z.object({ content: z.string().min(1).max(500), attachments: z.unknown().optional() }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
   const attachments = sanitizeAttachments(parsed.data.attachments);
   const dm = await prisma.directMessage.create({
     data: {
       conversationId: convo.id,
       authorId: userId,
-      content: parsed.data.content.trim().slice(0, 4000),
+      content: parsed.data.content.trim().slice(0, 500),
       attachments: attachments.length > 0 ? { create: attachments } : undefined,
     },
     include: { author: true, attachments: true },

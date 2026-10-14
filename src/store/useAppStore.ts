@@ -4,6 +4,7 @@ export type ServerListItem = {
   id: string;
   name: string;
   iconColor: string;
+  iconUrl: string;
   inviteCode: string;
   ownerId: string;
   memberCount: number;
@@ -16,7 +17,39 @@ export type ChannelItem = {
   type: "TEXT" | "VOICE";
   topic: string;
   serverId: string;
+  categoryId: string | null;
   position: number;
+};
+
+export type CategoryItem = {
+  id: string;
+  name: string;
+  position: number;
+};
+
+export type RoleItem = {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+  permissions: string[];
+  memberCount: number;
+};
+
+export type BanItem = {
+  id: string;
+  userId: string;
+  reason: string;
+  username: string;
+  displayName: string;
+};
+
+export type ServerEmoji = {
+  id: string;
+  serverId: string;
+  name: string;
+  url: string;
+  animated: boolean;
 };
 
 export type MemberItem = {
@@ -27,15 +60,24 @@ export type MemberItem = {
   avatarUrl?: string;
   status: string;
   role: string;
+  roleIds: string[];
+  roleNames: string[];
 };
 
 export type ServerDetail = {
   id: string;
   name: string;
   iconColor: string;
+  iconUrl: string;
   inviteCode: string;
+  discoverable: boolean;
+  allowExternalEmoji: boolean;
   ownerId: string;
   channels: ChannelItem[];
+  categories: CategoryItem[];
+  roles: RoleItem[];
+  bans: BanItem[];
+  customEmojis: ServerEmoji[];
   members: MemberItem[];
 };
 
@@ -46,6 +88,12 @@ export type FriendUser = {
   avatarColor: string;
   avatarUrl?: string;
   status: string;
+};
+
+export type GifFavorite = {
+  id: string;
+  url: string;
+  preview: string;
 };
 
 export type DMConversation = {
@@ -66,6 +114,7 @@ type AppState = {
   pendingIn: { id: string; user: FriendUser }[];
   pendingOut: { id: string; user: FriendUser }[];
   conversations: DMConversation[];
+  myEmojis: ServerEmoji[];
   showMembers: boolean;
   loadingServers: boolean;
 
@@ -80,6 +129,7 @@ type AppState = {
   refreshServerDetail: (serverId: string) => Promise<void>;
   refreshFriends: () => Promise<void>;
   refreshDMs: () => Promise<void>;
+  refreshMyEmojis: () => Promise<void>;
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -93,6 +143,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   pendingIn: [],
   pendingOut: [],
   conversations: [],
+  myEmojis: [],
   showMembers: true,
   loadingServers: false,
 
@@ -142,6 +193,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       const res = await fetch("/api/dms", { cache: "no-store" });
       const data = await res.json();
       if (res.ok) set({ conversations: data.conversations ?? [] });
+    } catch { /* ignore */ }
+  },
+  refreshMyEmojis: async () => {
+    try {
+      const res = await fetch("/api/emojis/mine", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) set({ myEmojis: data.emojis ?? [] });
     } catch { /* ignore */ }
   },
 }));

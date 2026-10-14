@@ -2,7 +2,7 @@ import type { User } from "@prisma/client";
 
 export type SafeUser = Pick<
   User,
-  "id" | "email" | "username" | "displayName" | "avatarColor" | "avatarUrl" | "status" | "customStatus" | "createdAt"
+  "id" | "email" | "username" | "displayName" | "avatarColor" | "avatarUrl" | "bannerUrl" | "status" | "customStatus" | "createdAt"
 >;
 
 export function toSafeUser(u: User): SafeUser {
@@ -13,6 +13,7 @@ export function toSafeUser(u: User): SafeUser {
     displayName: u.displayName,
     avatarColor: u.avatarColor,
     avatarUrl: u.avatarUrl,
+    bannerUrl: u.bannerUrl,
     status: u.status,
     customStatus: u.customStatus,
     createdAt: u.createdAt,

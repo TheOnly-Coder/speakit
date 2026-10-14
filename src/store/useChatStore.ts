@@ -27,6 +27,7 @@ export type ChatMessage = {
   channelId?: string;
   conversationId?: string;
   edited: boolean;
+  pinned?: boolean;
   createdAt: string;
   updatedAt?: string;
   tempId?: string;

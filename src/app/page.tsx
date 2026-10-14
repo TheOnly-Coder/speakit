@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, MessageCircle, UserPlus, Plus } from "lucide-react";
+import { LogOut, MessageCircle, UserPlus, Plus, Sun, Moon } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
+import { useThemeStore } from "@/store/useThemeStore";
 import { getSocket, disconnectSocket, setSocketToken } from "@/lib/socket";
 import { createClient as createSupabaseBrowser } from "@/lib/supabase";
 import { VoiceBridge } from "@/hooks/useVoice";
@@ -23,6 +24,9 @@ import {
   NewDMModal,
   SettingsModal,
 } from "@/components/Modals";
+import { ServerSettingsModal } from "@/components/ServerSettingsModal";
+import { BrowseServersModal } from "@/components/BrowseServersModal";
+import { ProfileModal } from "@/components/ProfileModal";
 
 export default function HomePage() {
   const { user, loading, fetchMe, logout } = useAuthStore();
@@ -49,11 +53,19 @@ export default function HomePage() {
   const [showJoin, setShowJoin] = useState(false);
   const [showChannel, setShowChannel] = useState(false);
   const [channelType, setChannelType] = useState<"TEXT" | "VOICE">("TEXT");
+  const [channelCategory, setChannelCategory] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showNewDM, setShowNewDM] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showServerSettings, setShowServerSettings] = useState(false);
+  const [showBrowse, setShowBrowse] = useState(false);
   const [socketStatus, setSocketStatus] = useState("connecting");
+  const { theme, toggle: toggleTheme, apply: applyTheme } = useThemeStore();
+
+  useEffect(() => {
+    applyTheme();
+  }, [applyTheme]);
 
   useEffect(() => {
     void fetchMe();
@@ -68,6 +80,7 @@ export default function HomePage() {
     void refreshServers();
     void refreshFriends();
     void refreshDMs();
+    void useAppStore.getState().refreshMyEmojis();
   }, [user, refreshServers, refreshFriends, refreshDMs]);
 
   // Auto-select first server/channel or home
@@ -117,12 +130,27 @@ export default function HomePage() {
     const onVoiceUpdate = () => {
       // Could show voice occupancy badges — refresh detail lightly (debounced by server events)
     };
+    const onServerUpdated = ({ serverId }: { serverId: string }) => {
+      const st = useAppStore.getState();
+      if (st.activeServerId === serverId) void st.refreshServerDetail(serverId);
+      void st.refreshServers();
+    };
+    const onKicked = ({ serverId }: { serverId: string }) => {
+      const st = useAppStore.getState();
+      void st.refreshServers();
+      if (st.activeServerId === serverId) {
+        st.setActiveServer(null);
+        st.setView("home");
+      }
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("dm:notify", onDMNotify);
     socket.on("presence:updated", onPresence);
     socket.on("voice:channel:update", onVoiceUpdate);
+    socket.on("server:updated", onServerUpdated);
+    socket.on("server:kicked", onKicked);
     if (socket.connected) setSocketStatus("live");
 
     return () => {
@@ -132,6 +160,8 @@ export default function HomePage() {
       socket.off("dm:notify", onDMNotify);
       socket.off("presence:updated", onPresence);
       socket.off("voice:channel:update", onVoiceUpdate);
+      socket.off("server:updated", onServerUpdated);
+      socket.off("server:kicked", onKicked);
     };
   }, [user]);
 
@@ -151,8 +181,9 @@ export default function HomePage() {
     setView("home");
   }, [activeServerId, serverDetail, refreshServers, setActiveServer, setView]);
 
-  const openCreateChannel = (type: "TEXT" | "VOICE") => {
+  const openCreateChannel = (type: "TEXT" | "VOICE", categoryId?: string | null) => {
     setChannelType(type);
+    setChannelCategory(categoryId ?? null);
     setShowChannel(true);
   };
 
@@ -175,6 +206,7 @@ export default function HomePage() {
       <ServerRail
         onAdd={() => setShowCreate(true)}
         onJoin={() => setShowJoin(true)}
+        onBrowse={() => setShowBrowse(true)}
         onHome={() => {
           setActiveServer(null);
           setView("home");
@@ -186,6 +218,7 @@ export default function HomePage() {
           onCreateChannel={openCreateChannel}
           onInvite={() => setShowInvite(true)}
           onOpenSettings={() => setShowSettings(true)}
+          onOpenServerSettings={() => setShowServerSettings(true)}
         />
       ) : (
         <DMSidebar onAddFriend={() => setShowAddFriend(true)} onOpenSettings={() => setShowSettings(true)} />
@@ -199,6 +232,9 @@ export default function HomePage() {
             {socketStatus === "live" ? "Connected" : "Connecting…"} • Speakit v1.0
           </span>
           <span className="flex items-center gap-2">
+            <button onClick={toggleTheme} className="flex items-center gap-1 hover:text-white" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+              {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
+            </button>
             {view === "server" && serverDetail && (
               <button onClick={handleLeaveServer} className="hover:text-red-400" title="Leave server">
                 Leave {serverDetail.name}
@@ -231,11 +267,14 @@ export default function HomePage() {
 
       <CreateServerModal open={showCreate} onClose={() => setShowCreate(false)} />
       <JoinServerModal open={showJoin} onClose={() => setShowJoin(false)} />
-      <CreateChannelModal open={showChannel} onClose={() => setShowChannel(false)} defaultType={channelType} />
+      <CreateChannelModal open={showChannel} onClose={() => setShowChannel(false)} defaultType={channelType} categoryId={channelCategory} />
       <InviteModal open={showInvite} onClose={() => setShowInvite(false)} />
       <AddFriendModal open={showAddFriend} onClose={() => setShowAddFriend(false)} />
       <NewDMModal open={showNewDM} onClose={() => setShowNewDM(false)} />
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
+      <ServerSettingsModal open={showServerSettings} onClose={() => setShowServerSettings(false)} />
+      <BrowseServersModal open={showBrowse} onClose={() => setShowBrowse(false)} />
+      <ProfileModal />
     </div>
   );
 }
