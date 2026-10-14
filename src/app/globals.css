@@ -40,6 +40,8 @@ html,
 body,
 #__next {
   height: 100%;
+  /* Kill double-tap-to-zoom on mobile (viewport locks pinch zoom). */
+  touch-action: manipulation;
 }
 
 /* Per-device appearance prefs (local-only, Discord-like) */
