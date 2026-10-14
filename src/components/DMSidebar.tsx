@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UserPlus, Settings, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { previewForMessage } from "@/lib/messagePreview";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProfileStore } from "@/store/useProfileStore";
@@ -75,7 +76,7 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
                     <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={32} status={c.other.status} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-white">{c.other.displayName}</div>
-                      <div className="truncate text-[11px] text-speakit-muted">{c.lastMessage || "Start a conversation"}</div>
+                      <div className="truncate text-[11px] text-speakit-muted">{previewForMessage(c.lastMessage, c.attachments ?? []) || "Start a conversation"}</div>
                     </div>
                     {pings > 0 && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">@{pings}</span>}
                   </button>

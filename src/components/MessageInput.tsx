@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker, type PickedGif } from "./GifPicker";
+import { previewForMessage } from "@/lib/messagePreview";
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const MAX_LEN = 500;
@@ -76,7 +77,9 @@ export function MessageInput({
   const submit = () => {
     const clean = value.trim().slice(0, MAX_LEN);
     if ((!clean && pending.length === 0) || uploading) return;
-    onSend(clean || "(attachment)", [...pending]);
+    // No "(attachment)" placeholder — empty text + attachments is valid.
+    // Old "(attachment)"/"(image)" messages are hidden by MessageItem instead.
+    onSend(clean, [...pending]);
     setValue("");
     setPending([]);
     setUploadError("");
@@ -138,7 +141,7 @@ export function MessageInput({
     <div className="relative px-4 pb-4">
       {replyTo && (
         <div className="mb-1 flex items-center justify-between rounded-t-lg bg-[#2b2d31] px-3 py-1.5 text-xs text-speakit-muted">
-          <span>Replying to <b className="text-white">{replyTo.author.displayName}</b>: {replyTo.content.slice(0, 80)}</span>
+          <span>Replying to <b className="text-white">{replyTo.author.displayName}</b>: {previewForMessage(replyTo.content, replyTo.attachments).slice(0, 80) || "attachment"}</span>
           <button onClick={onCancelReply}><X size={14} /></button>
         </div>
       )}

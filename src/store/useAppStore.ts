@@ -5,6 +5,8 @@ export type ServerListItem = {
   name: string;
   iconColor: string;
   iconUrl: string;
+  bannerUrl?: string;
+  description?: string;
   inviteCode: string;
   ownerId: string;
   memberCount: number;
@@ -69,6 +71,9 @@ export type ServerDetail = {
   name: string;
   iconColor: string;
   iconUrl: string;
+  bannerUrl?: string;
+  description?: string;
+  tags?: string;
   inviteCode: string;
   discoverable: boolean;
   allowExternalEmoji: boolean;
@@ -101,6 +106,7 @@ export type DMConversation = {
   id: string;
   other: FriendUser;
   lastMessage: string;
+  attachments?: { url: string; name: string; mime: string }[];
   lastAt: string;
 };
 

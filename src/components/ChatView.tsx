@@ -195,9 +195,11 @@ export function ChatView({ channelId }: { channelId: string }) {
   const handleSend = (content: string, attachments: ChatMessage["attachments"]) => {
     emitTyping(false);
     if (editing) {
-      getSocket().emit("channel:message:edit", { messageId: editing.id, content }, () => {});
+      const cleanEdit = content.trim().slice(0, 500);
+      if (!cleanEdit) return;
+      getSocket().emit("channel:message:edit", { messageId: editing.id, content: cleanEdit }, () => {});
       // Optimistic
-      updateMessage(key, editing.id, { content, edited: true });
+      updateMessage(key, editing.id, { content: cleanEdit, edited: true });
       setEditing(null);
       return;
     }
@@ -209,7 +211,7 @@ export function ChatView({ channelId }: { channelId: string }) {
       addMessage(key, {
         id: tempId,
         tempId,
-        content: clean || "(image)",
+        content: clean,
         channelId,
         edited: false,
         createdAt: new Date().toISOString(),
@@ -222,7 +224,7 @@ export function ChatView({ channelId }: { channelId: string }) {
     }
     getSocket().emit(
       "channel:message:send",
-      { channelId, content: clean || "(image)", replyToId: replyTo?.id, tempId, attachments },
+      { channelId, content: clean, replyToId: replyTo?.id, tempId, attachments },
       (res: unknown) => {
         const r = res as { ok?: boolean; message?: Record<string, unknown>; error?: string };
         if (r?.ok && r.message) {

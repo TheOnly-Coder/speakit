@@ -103,14 +103,19 @@ export function ServerSettingsModal({ open, onClose }: { open: boolean; onClose:
 function OverviewTab({ refresh }: { refresh: () => Promise<void> }) {
   const { serverDetail } = useAppStore();
   const [name, setName] = useState(serverDetail?.name ?? "");
+  const [description, setDescription] = useState(serverDetail?.description ?? "");
+  const [tags, setTags] = useState(serverDetail?.tags ?? "");
   const [discoverable, setDiscoverable] = useState(serverDetail?.discoverable ?? false);
   const [allowExternal, setAllowExternal] = useState(serverDetail?.allowExternalEmoji ?? true);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   useEffect(() => {
     setName(serverDetail?.name ?? "");
+    setDescription(serverDetail?.description ?? "");
+    setTags(serverDetail?.tags ?? "");
     setDiscoverable(serverDetail?.discoverable ?? false);
     setAllowExternal(serverDetail?.allowExternalEmoji ?? true);
   }, [serverDetail]);
@@ -166,22 +171,62 @@ function OverviewTab({ refresh }: { refresh: () => Promise<void> }) {
     }
   };
 
+  const uploadBanner = async (file: File | undefined) => {
+    if (!file || !serverDetail) return;
+    if (!file.type.startsWith("image/")) {
+      setMsg("Banner must be an image");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setMsg("Banner must be under 8 MB");
+      return;
+    }
+    setUploadingBanner(true);
+    try {
+      const { createClient } = await import("@/lib/supabase");
+      const supabase = createClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `server-banners/${serverDetail.id}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) {
+        setMsg(`Upload failed: ${error.message} (run scripts/supabase-storage.sql in Supabase first)`);
+        return;
+      }
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      await save({ bannerUrl: data.publicUrl });
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   if (!serverDetail) return null;
   return (
     <div>
+      {serverDetail.bannerUrl && (
+        <div className="mb-3 overflow-hidden rounded-lg">
+          <img src={serverDetail.bannerUrl} alt="banner" className="h-24 w-full object-cover" />
+        </div>
+      )}
       <div className="mb-4 flex items-center gap-4">
         {serverDetail.iconUrl ? (
           <img src={serverDetail.iconUrl} alt="icon" className="h-16 w-16 rounded-2xl object-cover" />
         ) : (
           <ServerIcon name={serverDetail.name} color={serverDetail.iconColor} />
         )}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <label className="cursor-pointer rounded-md bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20">
             {uploading ? "Uploading…" : "Upload icon"}
             <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => void uploadIcon(e.target.files?.[0])} />
           </label>
+          <label className="cursor-pointer rounded-md bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20">
+            {uploadingBanner ? "Uploading…" : "Upload banner"}
+            <input type="file" accept="image/*" className="hidden" disabled={uploadingBanner} onChange={(e) => void uploadBanner(e.target.files?.[0])} />
+          </label>
           {serverDetail.iconUrl && (
-            <button onClick={() => void save({ iconUrl: "" })} className="text-xs text-speakit-muted hover:text-red-400">Remove</button>
+            <button onClick={() => void save({ iconUrl: "" })} className="text-xs text-speakit-muted hover:text-red-400">Remove icon</button>
+          )}
+          {serverDetail.bannerUrl && (
+            <button onClick={() => void save({ bannerUrl: "" })} className="text-xs text-speakit-muted hover:text-red-400">Remove banner</button>
           )}
         </div>
       </div>
@@ -189,6 +234,18 @@ function OverviewTab({ refresh }: { refresh: () => Promise<void> }) {
         <div className="flex gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={64} />
           <button onClick={() => void save({ name })} disabled={busy} className="rounded-md bg-speakit-blurple px-3 text-sm text-white disabled:opacity-50">Save</button>
+        </div>
+      </Field>
+      <Field label="Description (shown in discovery)">
+        <div className="flex gap-2">
+          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this server about?" className={inputCls} maxLength={256} />
+          <button onClick={() => void save({ description })} disabled={busy} className="rounded-md bg-speakit-blurple px-3 text-sm text-white disabled:opacity-50">Save</button>
+        </div>
+      </Field>
+      <Field label="Tags (comma separated, e.g. gaming, chill, 18+)">
+        <div className="flex gap-2">
+          <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="gaming, chill" className={inputCls} maxLength={256} />
+          <button onClick={() => void save({ tags })} disabled={busy} className="rounded-md bg-speakit-blurple px-3 text-sm text-white disabled:opacity-50">Save</button>
         </div>
       </Field>
       <label className="mb-2 flex cursor-pointer items-center justify-between rounded-md bg-speakit-input px-3 py-2.5 text-sm">

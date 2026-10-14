@@ -11,7 +11,15 @@ export async function GET(req: Request) {
   const servers = await prisma.server.findMany({
     where: {
       discoverable: true,
-      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+              { tags: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     },
     include: {
       _count: { select: { members: true } },
@@ -26,8 +34,19 @@ export async function GET(req: Request) {
       name: s.name,
       iconColor: s.iconColor,
       iconUrl: s.iconUrl,
+      bannerUrl: (s as { bannerUrl?: string }).bannerUrl ?? "",
+      description: (s as { description?: string }).description ?? "",
+      tags: parseTags((s as { tags?: string }).tags ?? ""),
       memberCount: s._count.members,
       alreadyMember: s.members.length > 0,
     })),
   });
+}
+
+function parseTags(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((t) => t.trim().replace(/^#+/, "").slice(0, 24))
+    .filter(Boolean)
+    .slice(0, 8);
 }

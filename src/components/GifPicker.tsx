@@ -46,6 +46,11 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
   }, []);
 
   useEffect(() => {
+    // Always know favorites so the star state is correct in search too.
+    void loadFavs();
+  }, [loadFavs]);
+
+  useEffect(() => {
     if (tab === "search") void load("");
     else void loadFavs();
   }, [tab, load, loadFavs]);
@@ -104,20 +109,28 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
       )}
       {!loading && !error && (
         <div className="grid max-h-64 grid-cols-2 gap-1.5 overflow-y-auto">
-          {(tab === "search" ? gifs : favs.map((f) => ({ url: f.url, preview: f.preview || f.url, title: "GIF" }))).map((g) => (
-            <div key={g.url} className="group relative overflow-hidden rounded-md bg-black/30">
-              <button onClick={() => onPick(g)} className="block w-full">
-                <img src={g.preview || g.url} alt={g.title} loading="lazy" className="h-24 w-full object-cover hover:opacity-90" />
-              </button>
-              <button
-                onClick={() => void toggleFav(g, favUrls.has(g.url))}
-                title={favUrls.has(g.url) ? "Unfavorite" : "Favorite"}
-                className={`absolute right-1 top-1 rounded bg-black/60 p-1 ${favUrls.has(g.url) ? "text-yellow-400" : "text-white/70 hover:text-yellow-400"}`}
-              >
-                <Star size={13} fill={favUrls.has(g.url) ? "currentColor" : "none"} />
-              </button>
-            </div>
-          ))}
+          {(tab === "search" ? gifs : favs.map((f) => ({ url: f.url, preview: f.preview || f.url, title: "GIF" }))).map((g) => {
+            const isFav = favUrls.has(g.url);
+            return (
+              <div key={g.url} className="group relative overflow-hidden rounded-md bg-black/30">
+                <button onClick={() => onPick(g)} className="block w-full" title={g.title}>
+                  {/* Auto-play: animated GIF url, not the static jpg preview. */}
+                  <img src={g.url} alt={g.title} loading="lazy" className="h-24 w-full object-cover hover:opacity-90" />
+                </button>
+                <button
+                  onClick={() => void toggleFav(g, isFav)}
+                  title={isFav ? "Unfavorite" : "Favorite"}
+                  className={`absolute right-1 top-1 rounded bg-black/60 p-1 transition-opacity ${
+                    isFav
+                      ? "text-yellow-400 opacity-100"
+                      : "text-white/70 opacity-0 hover:text-yellow-400 focus:opacity-100 group-hover:opacity-100"
+                  }`}
+                >
+                  <Star size={13} fill={isFav ? "currentColor" : "none"} />
+                </button>
+              </div>
+            );
+          })}
           {((tab === "search" && gifs.length === 0) || (tab === "favorites" && favs.length === 0)) && (
             <div className="col-span-2 px-2 py-4 text-center text-xs text-speakit-muted">
               {tab === "favorites" ? "Star GIFs to find them here." : "No GIFs found."}

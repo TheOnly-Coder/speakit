@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -64,20 +64,40 @@ export function LoginForm() {
 }
 
 export function RegisterForm() {
-  const { register, error, notice } = useAuthStore();
+  const { register, resend, error, notice, retryAfter } = useAuthStore();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // Supabase enforces ~60s between confirmation emails per address.
+  // A visible countdown stops users hammering Register/Resend into a 429.
+  useEffect(() => {
+    if (retryAfter) setCooldown(retryAfter);
+  }, [retryAfter]);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cooldown > 0) return;
     setBusy(true);
     const ok = await register(email, username, displayName || username, password);
     setBusy(false);
     if (ok) router.push("/");
+  };
+
+  const handleResend = async () => {
+    if (!email || cooldown > 0) return;
+    setBusy(true);
+    await resend(email);
+    setBusy(false);
   };
 
   return (
@@ -101,9 +121,22 @@ export function RegisterForm() {
         </div>
         {error && <div className="text-sm text-red-400">{error}</div>}
         {notice && <div className="text-sm text-green-400">{notice}</div>}
-        <button disabled={busy} className="w-full rounded-md bg-speakit-blurple py-2 font-medium text-white hover:bg-[#4752c4] disabled:opacity-50">
-          {busy ? "Creating…" : "Register"}
+        {cooldown > 0 && (
+          <div className="text-sm text-speakit-muted">You can try again in {cooldown}s — please wait before resending.</div>
+        )}
+        <button disabled={busy || cooldown > 0} className="w-full rounded-md bg-speakit-blurple py-2 font-medium text-white hover:bg-[#4752c4] disabled:opacity-50">
+          {busy ? "Creating…" : cooldown > 0 ? `Wait ${cooldown}s…` : "Register"}
         </button>
+        {email.includes("@") && (notice || error) && (
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={busy || cooldown > 0}
+            className="w-full rounded-md bg-speakit-input py-2 text-sm font-medium text-white hover:bg-[#2b2d31] disabled:opacity-50"
+          >
+            {cooldown > 0 ? `Resend available in ${cooldown}s` : "Resend confirmation email"}
+          </button>
+        )}
         <div className="text-sm text-speakit-muted">
           Have an account? <Link href="/login" className="text-[#00a8fc] hover:underline">Log in</Link>
         </div>

@@ -4,6 +4,7 @@ import { Pin } from "lucide-react";
 import { Modal } from "./ui";
 import { Avatar } from "./Avatar";
 import { formatTime } from "@/lib/utils";
+import { previewForMessage, shouldShowBody } from "@/lib/messagePreview";
 
 export type PinItem = {
   id: string;
@@ -43,7 +44,11 @@ export function PinsModal({
                 <button onClick={() => onUnpin(p.id)} className="rounded bg-white/10 px-2 py-0.5 text-[11px] text-white hover:bg-white/20">Unpin</button>
               </span>
             </div>
-            <div className="whitespace-pre-wrap break-words text-sm">{p.content}</div>
+            {shouldShowBody(p.content) ? (
+              <div className="whitespace-pre-wrap break-words text-sm">{p.content}</div>
+            ) : p.attachments.length > 0 ? (
+              <div className="text-sm italic text-speakit-muted">{previewForMessage(p.content, p.attachments)}</div>
+            ) : null}
             {p.attachments.length > 0 && (
               <div className="mt-1 flex gap-1">
                 {p.attachments.map((a) => (

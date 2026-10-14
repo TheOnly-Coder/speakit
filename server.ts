@@ -262,7 +262,7 @@ void app.prepare().then(() => {
       ) => {
         try {
           const content = String(payload?.content ?? "").trim().slice(0, 500);
-          if (!payload?.channelId || !content) return ack?.({ error: "Message cannot be empty" });
+          if (!payload?.channelId) return ack?.({ error: "Message cannot be empty" });
           const channel = await canAccessChannel(userId, payload.channelId);
           if (!channel) return ack?.({ error: "Forbidden" });
           if (channel.type !== "TEXT") return ack?.({ error: "Cannot send messages in voice channels" });
@@ -276,6 +276,7 @@ void app.prepare().then(() => {
           }
 
           const attachments = sanitizeAttachments(payload.attachments);
+          if (!content && attachments.length === 0) return ack?.({ error: "Message cannot be empty" });
           const message = await prisma.message.create({
             data: {
               content,
@@ -465,10 +466,11 @@ void app.prepare().then(() => {
       async (payload: { conversationId: string; content: string; tempId?: string; attachments?: unknown }, ack?: (res: unknown) => void) => {
         try {
           const content = String(payload?.content ?? "").trim().slice(0, 500);
-          if (!payload?.conversationId || !content) return ack?.({ error: "Message cannot be empty" });
+          if (!payload?.conversationId) return ack?.({ error: "Message cannot be empty" });
           const convo = await canAccessConversation(userId, payload.conversationId);
           if (!convo) return ack?.({ error: "Forbidden" });
           const attachments = sanitizeAttachments(payload.attachments);
+          if (!content && attachments.length === 0) return ack?.({ error: "Message cannot be empty" });
           const dm = await prisma.directMessage.create({
             data: {
               conversationId: convo.id,

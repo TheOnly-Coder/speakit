@@ -17,6 +17,8 @@ export async function GET() {
     name: m.server.name,
     iconColor: m.server.iconColor,
     iconUrl: m.server.iconUrl,
+    bannerUrl: (m.server as unknown as { bannerUrl?: string }).bannerUrl ?? "",
+    description: (m.server as unknown as { description?: string }).description ?? "",
     inviteCode: m.server.inviteCode,
     ownerId: m.server.ownerId,
     memberCount: m.server._count.members,

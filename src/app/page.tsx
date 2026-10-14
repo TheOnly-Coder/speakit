@@ -28,6 +28,7 @@ import { ServerSettingsModal } from "@/components/ServerSettingsModal";
 import { ChannelSettingsModal } from "@/components/ChannelSettingsModal";
 import { BrowseServersModal } from "@/components/BrowseServersModal";
 import { ProfileModal } from "@/components/ProfileModal";
+import { previewForMessage } from "@/lib/messagePreview";
 
 export default function HomePage() {
   const { user, loading, fetchMe, logout } = useAuthStore();
@@ -403,7 +404,7 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
                 <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={36} status={c.other.status} />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-white">{c.other.displayName}</div>
-                  <div className="truncate text-xs text-speakit-muted">{c.lastMessage || "No messages yet"}</div>
+                  <div className="truncate text-xs text-speakit-muted">{previewForMessage(c.lastMessage, c.attachments ?? []) || "No messages yet"}</div>
                 </div>
               </button>
               <button

@@ -54,6 +54,10 @@ export async function POST(req: Request, { params }: { params: { channelId: stri
   const parsed = sendMessageSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
   const attachments = sanitizeAttachments(parsed.data.attachments);
+  const content = parsed.data.content.trim().slice(0, 500);
+  if (!content && attachments.length === 0) {
+    return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
+  }
 
   if (parsed.data.replyToId) {
     const replyTo = await prisma.message.findUnique({ where: { id: parsed.data.replyToId } });
@@ -64,7 +68,7 @@ export async function POST(req: Request, { params }: { params: { channelId: stri
 
   const message = await prisma.message.create({
     data: {
-      content: parsed.data.content.trim().slice(0, 500),
+      content,
       channelId: params.channelId,
       authorId: userId,
       replyToId: parsed.data.replyToId,

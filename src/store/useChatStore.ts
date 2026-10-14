@@ -32,7 +32,12 @@ export type ChatMessage = {
   updatedAt?: string;
   tempId?: string;
   author: ChatAuthor;
-  replyTo?: { id: string; content: string; author: { id: string; username: string; displayName: string } } | null;
+  replyTo?: {
+    id: string;
+    content: string;
+    author: { id: string; username: string; displayName: string };
+    attachments?: ChatAttachment[];
+  } | null;
   reactions: ChatReaction[];
   attachments: ChatAttachment[];
 };

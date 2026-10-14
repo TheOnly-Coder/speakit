@@ -135,6 +135,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
   const handleSend = (content: string, attachments: ChatMessage["attachments"]) => {
     const clean = content.trim().slice(0, 500);
     if (editing) {
+      if (!clean) return;
       getSocket().emit("dm:message:edit", { messageId: editing.id, content: clean }, () => {});
       updateMessage(key, editing.id, { content: clean, edited: true });
       setEditing(null);
@@ -147,7 +148,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
       addMessage(key, {
         id: tempId,
         tempId,
-        content: clean || "(image)",
+        content: clean,
         conversationId,
         edited: false,
         createdAt: new Date().toISOString(),
@@ -158,7 +159,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
     }
     getSocket().emit("dm:typing", { conversationId, typing: false });
-    getSocket().emit("dm:message:send", { conversationId, content: clean || "(image)", tempId, attachments }, (res: unknown) => {
+    getSocket().emit("dm:message:send", { conversationId, content: clean, tempId, attachments }, (res: unknown) => {
       const r = res as { ok?: boolean; message?: { id: string; content: string; createdAt: string; edited: boolean; author: ChatMessage["author"]; attachments?: ChatMessage["attachments"] } };
       if (r?.ok && r.message) {
         const all = useChatStore.getState().messages[key] ?? [];

@@ -11,17 +11,19 @@ export async function GET() {
     include: {
       participantA: true,
       participantB: true,
-      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+      messages: { orderBy: { createdAt: "desc" }, take: 1, include: { attachments: true } },
     },
     orderBy: { updatedAt: "desc" },
   });
   const mapped = convos.map((c) => {
     const other = c.participantAId === userId ? c.participantB : c.participantA;
+    const last = c.messages[0];
     return {
       id: c.id,
       other: { id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl, status: other.status },
-      lastMessage: c.messages[0]?.content ?? "",
-      lastAt: c.messages[0]?.createdAt ?? c.updatedAt,
+      lastMessage: last?.content ?? "",
+      attachments: last?.attachments.map((a) => ({ url: a.url, name: a.name, mime: a.mime })) ?? [],
+      lastAt: last?.createdAt ?? c.updatedAt,
     };
   });
   return NextResponse.json({ conversations: mapped });

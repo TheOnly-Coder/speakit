@@ -28,7 +28,9 @@ export const createChannelSchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
-  content: z.string().min(1).max(500),
+  // Empty text is allowed when attachments are present (GIF / image / audio).
+  // Old clients send "(attachment)" / "(image)" placeholders — still accepted.
+  content: z.string().max(500),
   replyToId: z.string().optional(),
   attachments: z.unknown().optional(),
 });

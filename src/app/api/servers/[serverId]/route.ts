@@ -38,6 +38,9 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
       name: server.name,
       iconColor: server.iconColor,
       iconUrl: server.iconUrl,
+      bannerUrl: (server as unknown as { bannerUrl?: string }).bannerUrl ?? "",
+      description: (server as unknown as { description?: string }).description ?? "",
+      tags: (server as unknown as { tags?: string }).tags ?? "",
       inviteCode: server.inviteCode,
       discoverable: server.discoverable,
       allowExternalEmoji: server.allowExternalEmoji,
@@ -87,6 +90,9 @@ function safeParsePerms(raw: string): string[] {
 const patchSchema = z.object({
   name: z.string().min(1).max(64).optional(),
   iconUrl: z.string().max(2048).optional(),
+  bannerUrl: z.string().max(2048).optional(),
+  description: z.string().max(256).optional(),
+  tags: z.string().max(256).optional(),
   discoverable: z.boolean().optional(),
   allowExternalEmoji: z.boolean().optional(),
   inviteCode: z.string().min(4).max(8).regex(/^[A-Z0-9]+$/).optional(),
@@ -108,6 +114,20 @@ export async function PATCH(req: Request, { params }: { params: { serverId: stri
     const url = parsed.data.iconUrl.trim();
     if (url !== "" && !isServerImageUrl(url)) return NextResponse.json({ error: "Invalid icon image" }, { status: 400 });
     data.iconUrl = url.slice(0, 2048);
+  }
+  if (parsed.data.bannerUrl !== undefined) {
+    const url = parsed.data.bannerUrl.trim();
+    if (url !== "" && !isServerImageUrl(url)) return NextResponse.json({ error: "Invalid banner image" }, { status: 400 });
+    data.bannerUrl = url.slice(0, 2048);
+  }
+  if (parsed.data.description !== undefined) data.description = parsed.data.description.trim().slice(0, 256);
+  if (parsed.data.tags !== undefined) {
+    data.tags = parsed.data.tags
+      .split(",")
+      .map((t) => t.trim().replace(/^#+/, "").slice(0, 24))
+      .filter(Boolean)
+      .slice(0, 8)
+      .join(", ");
   }
   if (parsed.data.discoverable !== undefined) data.discoverable = parsed.data.discoverable;
   if (parsed.data.allowExternalEmoji !== undefined) data.allowExternalEmoji = parsed.data.allowExternalEmoji;

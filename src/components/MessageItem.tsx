@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
 import { Avatar } from "./Avatar";
 import { splitShortcodes, emojiUrlFor } from "@/lib/emoji";
+import { previewForMessage, shouldShowBody } from "@/lib/messagePreview";
 import type { ServerEmoji } from "@/store/useAppStore";
 import type { ChatMessage } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
@@ -44,6 +45,11 @@ export function MessageItem({
   }, [serverDetail]);
 
   const parts = useMemo(() => splitShortcodes(msg.content), [msg.content]);
+  const showBody = shouldShowBody(msg.content);
+  const replyPreview = useMemo(
+    () => (msg.replyTo ? previewForMessage(msg.replyTo.content, msg.replyTo.attachments ?? []) : ""),
+    [msg.replyTo]
+  );
 
   return (
     <div id={`msg-${msg.id}`} className="group relative flex scroll-mt-16 gap-3 px-4 py-1.5 hover:bg-black/20">
@@ -55,7 +61,7 @@ export function MessageItem({
           <div className="mb-0.5 flex items-center gap-1 text-xs text-speakit-muted">
             <Reply size={12} />
             <span className="font-semibold">{msg.replyTo.author.displayName}</span>
-            <span className="truncate opacity-80">{msg.replyTo.content}</span>
+            <span className="truncate opacity-80">{replyPreview || <i>attachment</i>}</span>
           </div>
         )}
         <div className="flex items-baseline gap-2">
@@ -67,15 +73,17 @@ export function MessageItem({
           {msg.pinned && <span title="Pinned" className="text-[10px] text-yellow-400">📌</span>}
           {msg.tempId && <span className="text-[10px] text-speakit-muted">sending…</span>}
         </div>
-        <div className="whitespace-pre-wrap break-words text-[15px] text-speakit-text">
-          {parts.map((p, i) =>
-            "text" in p ? (
-              <span key={i}>{p.text}</span>
-            ) : (
-              <CustomGlyph key={i} name={p.emoji} url={emojiUrlFor(p.emoji, channelServerId, byServer, myEmojis)} />
-            )
-          )}
-        </div>
+        {showBody && (
+          <div className="whitespace-pre-wrap break-words text-[15px] text-speakit-text">
+            {parts.map((p, i) =>
+              "text" in p ? (
+                <span key={i}>{p.text}</span>
+              ) : (
+                <CustomGlyph key={i} name={p.emoji} url={emojiUrlFor(p.emoji, channelServerId, byServer, myEmojis)} />
+              )
+            )}
+          </div>
+        )}
         {msg.attachments.length > 0 && (
           <div className="mt-1.5 flex flex-col gap-2">
             <div className="flex flex-wrap gap-2">

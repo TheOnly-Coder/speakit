@@ -40,6 +40,9 @@ model Server {
   name              String
   iconColor         String   @default("#5865f2")
   iconUrl           String   @default("")
+  bannerUrl         String   @default("")
+  description       String   @default("")
+  tags              String   @default("")
   inviteCode        String   @unique
   discoverable      Boolean  @default(false)
   allowExternalEmoji Boolean @default(true)

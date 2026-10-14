@@ -17,5 +17,14 @@ services:
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         sync: false
+      # Server-only: enables instant signup with zero confirmation emails
+      # (bypasses Supabase's 2-emails/hour built-in limit). Get it from
+      # Supabase Dashboard -> Project Settings -> API -> secret API key.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Optional but recommended: your live Render URL so confirmation
+      # emails redirect back to /auth/confirm correctly.
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
       - key: KLIPY_API_KEY
         sync: false
