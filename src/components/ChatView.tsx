@@ -307,7 +307,7 @@ export function ChatView({ channelId }: { channelId: string }) {
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex-1 overflow-y-auto py-3">
+          <div className="msg-list smooth-scroll flex-1 overflow-y-auto py-3">
             {loading && <div className="px-4 text-sm text-speakit-muted">Loading messages…</div>}
             {!loading && list.length === 0 && (
               <div className="px-4 py-8 text-center">

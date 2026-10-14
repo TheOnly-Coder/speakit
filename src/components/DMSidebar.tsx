@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, Settings, Bell, BellOff } from "lucide-react";
+import { UserPlus, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { previewForMessage } from "@/lib/messagePreview";
 import { useAppStore } from "@/store/useAppStore";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useProfileStore } from "@/store/useProfileStore";
 import { Avatar } from "./Avatar";
+import { UserArea } from "./UserArea";
+import { ctxProps } from "./ContextMenu";
 
 export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => void; onOpenSettings: () => void }) {
   const { friends, pendingIn, pendingOut, conversations, activeDMId, setActiveDM, mutedDMs, dmMentionCounts, toggleMute, markMentionsRead } = useAppStore();
-  const { user } = useAuthStore();
   const [tab, setTab] = useState<"all" | "pending">("all");
 
   return (
@@ -43,7 +43,15 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
             <div className="px-2 py-1 text-[11px] font-bold uppercase text-speakit-muted">Friends — {friends.length}</div>
             {friends.length === 0 && <div className="px-2 text-xs text-speakit-muted">No friends yet. Add someone!</div>}
             {friends.map((f) => (
-              <div key={f.id} className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5">
+              <div
+                key={f.id}
+                className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5"
+                {...ctxProps(() => [
+                  { type: "header" as const, label: `@${f.username}` },
+                  { type: "item" as const, label: "View Profile", onClick: () => useProfileStore.getState().openProfile(f.id) },
+                  { type: "item" as const, label: "Remove Friend", danger: true, onClick: () => void removeFriend(f) },
+                ])}
+              >
                 <button onClick={() => useProfileStore.getState().openProfile(f.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                   <Avatar name={f.displayName} color={f.avatarColor} src={f.avatarUrl || undefined} size={32} status={f.status} />
                   <div className="min-w-0 flex-1">
@@ -65,7 +73,17 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
               const muted = mutedDMs.includes(c.id);
               const pings = dmMentionCounts[c.id] ?? 0;
               return (
-                <div key={c.id} className={cn("group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5", activeDMId === c.id && "bg-white/10")}>
+                <div
+                  key={c.id}
+                  className={cn("group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5", activeDMId === c.id && "bg-white/10")}
+                  {...ctxProps(() => [
+                    { type: "header" as const, label: c.other.displayName },
+                    { type: "item" as const, label: muted ? "Unmute Conversation" : "Mute Conversation", onClick: () => void toggleMute("dm", c.id) },
+                    { type: "item" as const, label: "View Profile", onClick: () => useProfileStore.getState().openProfile(c.other.id) },
+                    { type: "sep" as const },
+                    { type: "item" as const, label: "Close Conversation", danger: true, onClick: () => void closeDM(c.id) },
+                  ])}
+                >
                   <button
                     onClick={() => {
                       setActiveDM(c.id);
@@ -115,16 +133,10 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
         )}
       </div>
 
-      <div className="flex items-center gap-2 bg-[#232428] px-2 py-2">
-        {user && <Avatar name={user.displayName} color={user.avatarColor} src={user.avatarUrl || undefined} size={32} status={user.status} />}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold text-white">{user?.displayName}</div>
-          <div className="truncate text-[11px] text-speakit-muted">@{user?.username}</div>
-        </div>
-        <button onClick={onOpenSettings} className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-white">
-          <Settings size={16} />
-        </button>
-      </div>
+      <UserArea
+        onOpenSettings={onOpenSettings}
+        onLogout={() => window.dispatchEvent(new CustomEvent("speakit:logout"))}
+      />
     </div>
   );
 }

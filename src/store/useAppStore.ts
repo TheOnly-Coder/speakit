@@ -177,11 +177,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   setShowMembers: (v) => set({ showMembers: v }),
 
   refreshServers: async () => {
+    // Instant paint: show the last-known server list from this device first,
+    // then revalidate over the network (stale-while-revalidate).
+    try {
+      if (typeof window !== "undefined") {
+        const cached = window.localStorage.getItem("speakit-servers-cache-v1");
+        if (cached && get().servers.length === 0) {
+          const parsed = JSON.parse(cached) as ServerListItem[];
+          if (Array.isArray(parsed)) set({ servers: parsed });
+        }
+      }
+    } catch {
+      /* ignore */
+    }
     set({ loadingServers: true });
     try {
       const res = await fetch("/api/servers", { cache: "no-store" });
       const data = await res.json();
-      if (res.ok) set({ servers: data.servers ?? [] });
+      if (res.ok) {
+        set({ servers: data.servers ?? [] });
+        try {
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("speakit-servers-cache-v1", JSON.stringify(data.servers ?? []));
+          }
+        } catch {
+          /* quota — ignore */
+        }
+      }
     } finally {
       set({ loadingServers: false });
     }

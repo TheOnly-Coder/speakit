@@ -42,6 +42,84 @@ body,
   height: 100%;
 }
 
+/* Per-device appearance prefs (local-only, Discord-like) */
+:root {
+  --speakit-font-scale: 1;
+}
+
+body {
+  font-size: calc(16px * var(--speakit-font-scale, 1));
+  /* Safe-area for notched phones when installed to home screen */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Compact (Discord "Compact") message density */
+html.speakit-compact .msg-cozy-only {
+  display: none !important;
+}
+
+/* Reduced motion: kill smooth scrolling + pulses for sensitive users */
+html.speakit-reduce-motion *,
+html.speakit-reduce-motion *::before,
+html.speakit-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Message list perf: skip offscreen layout work, like Discord's virtual list lite */
+.msg-list > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
+}
+
+/* Buttery scrolling on touch devices */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+}
+html.speakit-reduce-motion .smooth-scroll {
+  scroll-behavior: auto;
+}
+
+/* App-shell fade-in avoids the white flash on reload */
+@keyframes speakit-shell-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.speakit-shell-in {
+  animation: speakit-shell-in 160ms ease-out;
+}
+html.speakit-reduce-motion .speakit-shell-in {
+  animation: none;
+}
+
+/* Local background active: make Discord surfaces translucent so the image shows through */
+html.speakit-has-bg .bg-speakit-bg {
+  background-color: rgb(49 51 56 / 0.86) !important;
+}
+html.speakit-has-bg .bg-speakit-sidebar {
+  background-color: rgb(43 45 49 / 0.88) !important;
+}
+html.speakit-has-bg .bg-speakit-rail {
+  background-color: rgb(30 31 34 / 0.9) !important;
+}
+html.speakit-has-bg .bg-\[\#1e1f22\] {
+  background-color: rgb(30 31 34 / 0.88) !important;
+}
+html.speakit-has-bg .bg-\[\#2b2d31\] {
+  background-color: rgb(43 45 49 / 0.78) !important;
+}
+html.speakit-has-bg .bg-\[\#232428\] {
+  background-color: rgb(35 36 40 / 0.88) !important;
+}
+
 body {
   @apply bg-speakit-bg text-speakit-text antialiased;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;

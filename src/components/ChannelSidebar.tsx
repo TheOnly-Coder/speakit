@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Hash, Volume2, Plus, Settings, Mic, MicOff, Headphones, PhoneOff, Users, ChevronDown, Cog, Bell, BellOff } from "lucide-react";
+import { Hash, Volume2, Plus, MicOff, PhoneOff, Users, Cog, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { voiceActions } from "@/hooks/useVoice";
 import { useAppStore, type ChannelItem } from "@/store/useAppStore";
 import { useVoiceStore } from "@/store/useVoiceStore";
 import { Avatar } from "./Avatar";
+import { ServerMenu } from "./ServerMenu";
+import { UserArea } from "./UserArea";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProfileStore } from "@/store/useProfileStore";
 import { myServerPerms } from "@/lib/clientPerms";
+import { ctxProps } from "./ContextMenu";
 
 export function ChannelSidebar({
   onCreateChannel,
@@ -34,9 +37,6 @@ export function ChannelSidebar({
 
   const myPerms = myServerPerms(serverDetail, user?.id);
   const canManage = myPerms.has("manageChannels");
-  const canOpenSettings =
-    serverDetail.ownerId === user?.id ||
-    ["manageServer", "manageChannels", "manageRoles", "manageEmoji", "kickMembers", "banMembers"].some((p) => myPerms.has(p));
   const textChannels = serverDetail.channels.filter((c) => c.type === "TEXT");
   const voiceChannels = serverDetail.channels.filter((c) => c.type === "VOICE");
   const uncategorized = textChannels.filter((c) => !c.categoryId);
@@ -59,6 +59,24 @@ export function ChannelSidebar({
     return false;
   };
 
+  const channelMenu = (ch: ChannelItem) => {
+    const muted = mutedChannels.includes(ch.id);
+    return [
+      { type: "header" as const, label: `# ${ch.name}` },
+      { type: "item" as const, label: muted ? "Unmute Channel" : "Mute Channel", hint: "M", onClick: () => void toggleMute("channel", ch.id) },
+      { type: "item" as const, label: "Copy Channel ID", onClick: () => void navigator.clipboard?.writeText(ch.id).catch(() => {}) },
+      ...(canManage
+        ? [
+            { type: "sep" as const },
+            { type: "item" as const, label: "Edit Channel", onClick: () => onOpenChannelSettings(ch.id) },
+            ...(ch.name !== "general"
+              ? [{ type: "item" as const, label: "Delete Channel", danger: true, onClick: () => void deleteChannel(ch.id) }]
+              : []),
+          ]
+        : []),
+    ];
+  };
+
   const renderChannel = (ch: ChannelItem) => {
     const muted = mutedChannels.includes(ch.id);
     const pings = mentionCounts[ch.id] ?? 0;
@@ -69,6 +87,7 @@ export function ChannelSidebar({
           setActiveChannel(ch.id);
           if (pings > 0) void markMentionsRead({ channelId: ch.id });
         }}
+        {...ctxProps(() => channelMenu(ch))}
         className={cn(
           "group mb-0.5 flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-sm",
           activeChannelId === ch.id ? "bg-white/10 text-white" : "text-speakit-muted hover:bg-white/5 hover:text-speakit-text"
@@ -118,21 +137,16 @@ export function ChannelSidebar({
 
   return (
     <div className="flex w-60 flex-col bg-speakit-sidebar">
-      <button
-        onClick={canOpenSettings ? onOpenServerSettings : onInvite}
-        title={canOpenSettings ? "Server settings" : "Invite friends"}
-        className="flex h-12 items-center gap-2 border-b border-black/30 px-3 text-left shadow-sm hover:bg-white/5"
-      >
-        {serverDetail.iconUrl ? (
-          <img src={serverDetail.iconUrl} alt="" className="h-7 w-7 shrink-0 rounded-lg object-cover" />
-        ) : (
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black text-white" style={{ backgroundColor: serverDetail.iconColor }}>
-            {serverDetail.name.slice(0, 1).toUpperCase()}
-          </span>
-        )}
-        <span className="flex-1 truncate text-sm font-bold text-white">{serverDetail.name}</span>
-        <ChevronDown size={16} className="shrink-0 text-speakit-muted" />
-      </button>
+      <ServerMenu
+        onInvite={onInvite}
+        onOpenServerSettings={onOpenServerSettings}
+        onCreateChannel={(t) => onCreateChannel(t)}
+        onLeave={() => {
+          // Handled by the page-level leave flow via a custom event so the
+          // sidebar stays dumb; fall back to confirm + DELETE here.
+          window.dispatchEvent(new CustomEvent("speakit:leave-server"));
+        }}
+      />
       <div className="flex items-center gap-1 px-4 pt-1">
         <button title="Toggle members" onClick={() => setShowMembers(!showMembers)} className="rounded p-1 text-speakit-muted hover:text-white">
           <Users size={14} />
@@ -140,7 +154,7 @@ export function ChannelSidebar({
         <button title="Invite" onClick={onInvite} className="rounded p-1 text-speakit-muted hover:text-white">
           <Plus size={16} />
         </button>
-        <span className="ml-auto text-[10px] text-speakit-muted">{canOpenSettings ? "Click name for settings" : ""}</span>
+        <span className="ml-auto text-[10px] text-speakit-muted">Right-click for more</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
@@ -207,34 +221,10 @@ export function ChannelSidebar({
         ))}
       </div>
 
-      <div className="flex items-center gap-2 bg-[#232428] px-2 py-2">
-        {user && (
-          <button onClick={() => openProfile(user.id)} title="View profile">
-            <Avatar name={user.displayName} color={user.avatarColor} src={user.avatarUrl || undefined} size={32} status={user.status} />
-          </button>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold text-white">{user?.displayName}</div>
-          <div className="truncate text-[11px] text-speakit-muted">@{user?.username}</div>
-        </div>
-        <button
-          title={voice.selfMuted ? "Unmute" : "Mute"}
-          onClick={() => useVoiceStore.getState().setSelfMuted(!voice.selfMuted)}
-          className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-white"
-        >
-          {voice.selfMuted ? <MicOff size={16} /> : <Mic size={16} />}
-        </button>
-        <button
-          title={voice.selfDeafened ? "Undeafen" : "Deafen"}
-          onClick={() => useVoiceStore.getState().setSelfDeafened(!voice.selfDeafened)}
-          className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-white"
-        >
-          <Headphones size={16} />
-        </button>
-        <button title="Settings" onClick={onOpenSettings} className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-white">
-          <Settings size={16} />
-        </button>
-      </div>
+      <UserArea
+        onOpenSettings={onOpenSettings}
+        onLogout={() => window.dispatchEvent(new CustomEvent("speakit:logout"))}
+      />
 
       {voice.channelId && (
         <div className="border-t border-black/30 bg-[#232428] px-3 py-2">

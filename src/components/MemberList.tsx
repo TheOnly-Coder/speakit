@@ -3,8 +3,10 @@
 import { Crown } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { useProfileStore } from "@/store/useProfileStore";
+import { useAppStore } from "@/store/useAppStore";
 import type { MemberItem, RoleItem } from "@/store/useAppStore";
 import { groupMembers, displayColorFor } from "@/lib/memberGroups";
+import { ctxProps } from "./ContextMenu";
 
 /** Yapper/Discord-style member list: ROLE - count headers, role-colored names. */
 export function MemberList({
@@ -33,8 +35,30 @@ export function MemberList({
               <button
                 key={m.id}
                 onClick={() => openProfile(m.id)}
-                title={`@${m.username}`}
+                title={`@${m.username} — right-click for options`}
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5"
+                {...ctxProps(() => [
+                  { type: "header" as const, label: m.displayName },
+                  { type: "item" as const, label: "View Profile", onClick: () => openProfile(m.id) },
+                  {
+                    type: "item" as const,
+                    label: "Message",
+                    onClick: async () => {
+                      try {
+                        const res = await fetch("/api/dms", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: m.id }) });
+                        const data = await res.json();
+                        if (res.ok) {
+                          await useAppStore.getState().refreshDMs();
+                          useAppStore.getState().setActiveServer(null);
+                          useAppStore.getState().setActiveDM(data.conversationId);
+                        }
+                      } catch {
+                        /* ignore */
+                      }
+                    },
+                  },
+                  { type: "item" as const, label: "Copy User ID", onClick: () => void navigator.clipboard?.writeText(m.id).catch(() => {}) },
+                ])}
               >
                 <Avatar
                   name={m.displayName}

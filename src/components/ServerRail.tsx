@@ -4,6 +4,7 @@ import { Home, Plus, Link2, Compass } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { ServerIcon } from "./Avatar";
 import { cn } from "@/lib/utils";
+import { ctxProps } from "./ContextMenu";
 
 export function ServerRail({
   onAdd,
@@ -39,7 +40,17 @@ export function ServerRail({
       </button>
       <div className="h-0.5 w-8 rounded bg-white/10" />
       {ordered.map((s) => (
-        <button key={s.id} title={s.name} onClick={() => setActiveServer(s.id)}>
+        <button
+          key={s.id}
+          title={`${s.name} — right-click for options`}
+          onClick={() => setActiveServer(s.id)}
+          {...ctxProps(() => [
+            { type: "header" as const, label: s.name },
+            { type: "item" as const, label: "Open Server", onClick: () => setActiveServer(s.id) },
+            { type: "item" as const, label: "Copy Server ID", onClick: () => void navigator.clipboard?.writeText(s.id).catch(() => {}) },
+            { type: "item" as const, label: "Copy Invite Code", onClick: () => void navigator.clipboard?.writeText(s.inviteCode).catch(() => {}) },
+          ])}
+        >
           {s.iconUrl ? (
             <div className="group relative flex items-center">
               <div
@@ -51,6 +62,8 @@ export function ServerRail({
               <img
                 src={s.iconUrl}
                 alt={s.name}
+                loading="lazy"
+                decoding="async"
                 className={cn(
                   "h-12 w-12 object-cover transition-all",
                   activeServerId === s.id ? "rounded-2xl" : "rounded-full group-hover:rounded-2xl"

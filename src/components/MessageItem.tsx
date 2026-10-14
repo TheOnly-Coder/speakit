@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Reply, Pencil, Trash2, Smile, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
@@ -12,11 +12,13 @@ import type { ChatMessage } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProfileStore } from "@/store/useProfileStore";
+import { useLocalAppearance } from "@/store/useLocalAppearance";
 import { displayColorFor } from "@/lib/memberGroups";
+import { ctxProps } from "./ContextMenu";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🎉"];
 
-export function MessageItem({
+export const MessageItem = memo(function MessageItem({
   msg,
   channelServerId,
   onReply,
@@ -36,6 +38,8 @@ export function MessageItem({
   const { user } = useAuthStore();
   const { serverDetail, myEmojis } = useAppStore();
   const { openProfile } = useProfileStore();
+  const compact = useLocalAppearance((s) => s.compact);
+  const showTimestamps = useLocalAppearance((s) => s.showTimestamps);
   const [showEmoji, setShowEmoji] = useState(false);
   const isMine = user?.id === msg.author.id;
 
@@ -60,8 +64,20 @@ export function MessageItem({
   );
 
   return (
-    <div id={`msg-${msg.id}`} className="group relative flex scroll-mt-16 gap-3 px-4 py-1.5 hover:bg-black/20">
-      <button onClick={() => openProfile(msg.author.id)} title="View profile" className="h-fit">
+    <div
+      id={`msg-${msg.id}`}
+      className={`group relative flex scroll-mt-16 gap-3 px-4 hover:bg-black/20 ${compact ? "py-0.5" : "py-1.5"}`}
+      {...ctxProps(() => [
+        { type: "item" as const, label: "Reply", onClick: () => onReply(msg) },
+        { type: "item" as const, label: msg.pinned ? "Unpin Message" : "Pin Message", onClick: () => onPin(msg) },
+        { type: "item" as const, label: "Copy Text", onClick: () => void navigator.clipboard?.writeText(msg.content).catch(() => {}) },
+        { type: "item" as const, label: "Copy Message ID", onClick: () => void navigator.clipboard?.writeText(msg.id).catch(() => {}) },
+        ...(isMine ? [{ type: "item" as const, label: "Edit Message", hint: "E", onClick: () => onEdit(msg) }] : []),
+        { type: "sep" as const },
+        { type: "item" as const, label: "Delete Message", danger: true, onClick: () => onDelete(msg) },
+      ])}
+    >
+      <button onClick={() => openProfile(msg.author.id)} title="View profile" className={`h-fit ${compact ? "hidden" : ""} msg-cozy-only`}>
         <Avatar name={msg.author.displayName} color={msg.author.avatarColor} src={msg.author.avatarUrl || undefined} size={40} />
       </button>
       <div className="min-w-0 flex-1">
@@ -80,7 +96,7 @@ export function MessageItem({
           >
             {msg.author.displayName}
           </button>
-          <span className="text-[11px] text-speakit-muted">@{msg.author.username} • {formatTime(msg.createdAt)}</span>
+          <span className="text-[11px] text-speakit-muted">@{msg.author.username}{showTimestamps ? ` • ${formatTime(msg.createdAt)}` : ""}</span>
           {msg.edited && <span className="text-[10px] text-speakit-muted">(edited)</span>}
           {msg.pinned && <span title="Pinned" className="text-[10px] text-yellow-400">📌</span>}
           {msg.tempId && <span className="text-[10px] text-speakit-muted">sending…</span>}
@@ -101,7 +117,7 @@ export function MessageItem({
             <div className="flex flex-wrap gap-2">
               {msg.attachments.filter((a) => !a.mime.startsWith("audio/")).map((a) => (
                 <a key={a.url} href={a.url} target="_blank" rel="noreferrer" title={a.name}>
-                  <img src={a.url} alt={a.name} loading="lazy" className="max-h-64 max-w-full rounded-lg object-cover hover:opacity-90 sm:max-w-sm" />
+                  <img src={a.url} alt={a.name} loading="lazy" decoding="async" className="max-h-64 max-w-full rounded-lg object-cover hover:opacity-90 sm:max-w-sm" />
                 </a>
               ))}
             </div>
@@ -151,7 +167,7 @@ export function MessageItem({
       )}
     </div>
   );
-}
+});
 
 function CustomGlyph({ name, url }: { name: string; url: string | null }) {
   if (!url) return <span>:{name}:</span>;

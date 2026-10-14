@@ -6,6 +6,7 @@ import type { ChatMessage, ChatAttachment } from "@/store/useChatStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
 import { createClient } from "@/lib/supabase";
+import { useLocalAppearance } from "@/store/useLocalAppearance";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker, type PickedGif } from "./GifPicker";
 import { previewForMessage } from "@/lib/messagePreview";
@@ -46,6 +47,7 @@ export function MessageInput({
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { serverDetail, myEmojis } = useAppStore();
+  const enterToSend = useLocalAppearance((s) => s.enterToSend);
 
   useEffect(() => {
     if (editing) {
@@ -204,7 +206,7 @@ export function MessageInput({
             e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && enterToSend) {
               e.preventDefault();
               submit();
             }
