@@ -11,6 +11,8 @@ import {
   sendMessageSchema,
 } from "../src/lib/validations";
 import { sanitizeAttachments, isAvatarUrl } from "../src/lib/attachments";
+import { memberPermissions, hasPermission } from "../src/lib/permissions";
+import { canInChannel } from "../src/lib/channelPerms";
 import { sortedPair } from "../src/lib/utils";
 import { generateInviteCode } from "../src/lib/invite";
 
@@ -162,7 +164,7 @@ async function main() {
     dupEmoji = true;
   }
   assert(dupEmoji, "duplicate emoji name rejected");
-  const fav = await prisma.favoriteGif.create({ data: { userId: ua.id, url: "https://media.tenor.com/abc.gif", preview: "https://media.tenor.com/abc_tiny.gif" } });
+  const fav = await prisma.favoriteGif.create({ data: { userId: ua.id, url: "https://static.klipy.com/ii/abc.gif", preview: "https://static.klipy.com/ii/abc.jpg" } });
   assert(!!fav.id, "gif favorite stored");
   await prisma.server.update({ where: { id: server.id }, data: { discoverable: true } });
   const found = await prisma.server.count({ where: { discoverable: true } });
@@ -185,6 +187,43 @@ async function main() {
   await prisma.ban.deleteMany({ where: { serverId: server.id, userId: outsider.id } });
   const unbanned = await prisma.ban.findUnique({ where: { serverId_userId: { serverId: server.id, userId: outsider.id } } });
   assert(unbanned === null, "unban works");
+
+  console.log("11) channel overwrites, mentions, mutes");
+  await prisma.channelOverwrite.create({ data: { channelId: text.id, target: "everyone", allow: JSON.stringify([]), deny: JSON.stringify(["react"]) } });
+  const ows = await prisma.channelOverwrite.findMany({ where: { channelId: text.id } });
+  assert(ows.length === 1 && JSON.parse(ows[0].deny).includes("react"), "overwrite stored");
+  const mention = await prisma.mention.create({ data: { userId: ub.id, messageId: m1.id, channelId: text.id } });
+  assert(!mention.read, "mention unread by default");
+  const unread = await prisma.mention.count({ where: { userId: ub.id, read: false } });
+  assert(unread >= 1, "unread pings counted");
+  await prisma.mention.updateMany({ where: { userId: ub.id, channelId: text.id }, data: { read: true } });
+  const cleared = await prisma.mention.count({ where: { userId: ub.id, read: false, channelId: text.id } });
+  assert(cleared === 0, "pings mark read");
+  const mute = await prisma.mute.create({ data: { userId: ub.id, kind: "channel", targetId: text.id } });
+  assert(!!mute.id, "mute stored");
+  let dupMute = false;
+  try {
+    await prisma.mute.create({ data: { userId: ub.id, kind: "channel", targetId: text.id } });
+  } catch {
+    dupMute = true;
+  }
+  assert(dupMute, "duplicate mute rejected");
+
+  console.log("12) permission engine");
+  // NOTE: section 10 had ub leave the server — rejoin for perm checks.
+  await prisma.serverMember.create({ data: { userId: ub.id, serverId: server.id, role: "member" } });
+  const rejoined = await prisma.serverMember.findUnique({ where: { userId_serverId: { userId: ub.id, serverId: server.id } } });
+  await prisma.memberRole.create({ data: { memberId: rejoined!.id, roleId: role.id } });
+  const ownerPerms = await memberPermissions(ua.id, server.id);
+  assert(ownerPerms.has("banMembers") && ownerPerms.has("manageRoles"), "owner holds all perms");
+  assert(await hasPermission(ub.id, server.id, "kickMembers"), "role grants kick");
+  assert(!(await hasPermission(ub.id, server.id, "banMembers")), "missing perm denied");
+  assert(!(await hasPermission(outsider.id, server.id, "kickMembers")), "outsider denied");
+  const chRef = { id: text.id, serverId: server.id, type: "TEXT" };
+  assert(await canInChannel(ub.id, chRef, "send"), "send allowed by default");
+  assert(!(await canInChannel(ub.id, chRef, "react")), "everyone-deny blocks react");
+  await prisma.channelOverwrite.create({ data: { channelId: text.id, target: role.id, allow: JSON.stringify(["react"]), deny: JSON.stringify([]) } });
+  assert(await canInChannel(ub.id, chRef, "react"), "role-allow beats everyone-deny");
 
   console.log("cleanup");
   await prisma.user.deleteMany({ where: { username: { startsWith: "smoke_" } } });

@@ -87,7 +87,7 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search Tenor GIFs…"
+          placeholder="Search KLIPY…"
           className="mb-2 w-full rounded bg-speakit-input px-2 py-1.5 text-sm text-white outline-none placeholder:text-speakit-muted"
         />
       )}
@@ -95,9 +95,12 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
       {error && (
         <div className="px-2 py-4 text-center text-xs text-speakit-muted">
           {unconfigured
-            ? "GIF search needs a Tenor key. Server admin: add TENOR_API_KEY to the environment (Google Cloud Console → Tenor API)."
+            ? "GIF search needs a Klipy key. Server admin: add KLIPY_API_KEY to the environment."
             : error}
         </div>
+      )}
+      {!loading && !error && (
+        <div className="px-2 pb-1 text-right text-[10px] text-speakit-muted">GIFs via KLIPY</div>
       )}
       {!loading && !error && (
         <div className="grid max-h-64 grid-cols-2 gap-1.5 overflow-y-auto">

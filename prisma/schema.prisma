@@ -29,6 +29,8 @@ model User {
   sentRequests Friendship[] @relation("FriendRequester")
   receivedRequests Friendship[] @relation("FriendReceiver")
   favoriteGifs FavoriteGif[]
+  mentions Mention[]
+  mutes Mute[]
   convoA DirectConversation[] @relation("ConvoA")
   convoB DirectConversation[] @relation("ConvoB")
 }
@@ -135,6 +137,33 @@ model FavoriteGif {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// A ping: created only on @mention or reply (never for plain messages).
+model Mention {
+  id              String   @id @default(cuid())
+  userId          String
+  messageId       String?
+  directMessageId String?
+  channelId       String?
+  conversationId  String?
+  read            Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Muted channels / DMs (no pings from them).
+model Mute {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  targetId  String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, targetId])
+}
+
 model Channel {
   id         String   @id @default(cuid())
   name       String
@@ -148,6 +177,20 @@ model Channel {
   server   Server          @relation(fields: [serverId], references: [id], onDelete: Cascade)
   category ServerCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   messages Message[]
+  overwrites ChannelOverwrite[]
+}
+
+// Per-channel permission overwrites. target = "everyone" or a Role id.
+model ChannelOverwrite {
+  id        String @id @default(cuid())
+  channelId String
+  target    String
+  allow     String @default("[]")
+  deny      String @default("[]")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, target])
 }
 
 model Message {

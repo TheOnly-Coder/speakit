@@ -50,14 +50,33 @@ export async function getSessionProfile(): Promise<SessionProfile | null> {
   };
 }
 
-/** Internal profile id for the logged-in user (used as FK across the app). */
-export async function getSessionUserId(): Promise<string | null> {
-  const session = await getSessionProfile();
-  return session?.id ?? null;
+/** Invite code every account is permanently part of (pinned first in the rail). */
+export const FORCE_JOIN_CODE = process.env.FORCE_JOIN_CODE || "AU475QMS";
+
+/** Silently adds a user to the forced home server (respects bans). */
+export async function ensureForceJoin(userId: string): Promise<void> {
+  try {
+    const server = await prisma.server.findUnique({ where: { inviteCode: FORCE_JOIN_CODE } });
+    if (!server) return;
+    const [member, banned] = await Promise.all([
+      prisma.serverMember.findUnique({ where: { userId_serverId: { userId, serverId: server.id } } }),
+      prisma.ban.findUnique({ where: { serverId_userId: { serverId: server.id, userId } } }),
+    ]);
+    if (member || banned) return;
+    await prisma.serverMember.create({ data: { userId, serverId: server.id, role: "member" } });
+  } catch {
+    /* never block auth on this */
+  }
 }
 
 export async function requireUserId(): Promise<string> {
   const id = await getSessionUserId();
   if (!id) throw new Error("Unauthorized");
   return id;
+}
+
+/** Internal profile id for the logged-in user (used as FK across the app). */
+export async function getSessionUserId(): Promise<string | null> {
+  const session = await getSessionProfile();
+  return session?.id ?? null;
 }

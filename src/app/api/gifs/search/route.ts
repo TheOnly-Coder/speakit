@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth";
-import { searchTenor } from "@/lib/tenor";
+import { searchKlipy } from "@/lib/klipy";
 
-/** GIF search proxy (Tenor). Requires TENOR_API_KEY on the server. */
+/** GIF search proxy (Klipy). Requires KLIPY_API_KEY on the server. */
 export async function GET(req: Request) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").slice(0, 128);
   try {
-    const gifs = await searchTenor(q, 12);
+    const gifs = await searchKlipy(q, 12);
     return NextResponse.json({ gifs });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "GIF search failed";

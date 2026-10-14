@@ -12,7 +12,7 @@ const emojiSchema = z.object({
 function isEmojiUrl(url: string): boolean {
   const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
   if (base && url.startsWith(`${base}/storage/v1/object/public/emojis/`)) return true;
-  if (url.startsWith("https://media.tenor.com/")) return true;
+  if (url.startsWith("https://static.klipy.com/")) return true;
   return false;
 }
 
@@ -36,7 +36,7 @@ export async function POST(req: Request, { params }: { params: { serverId: strin
   const body = await req.json();
   const parsed = emojiSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid emoji" }, { status: 400 });
-  if (!isEmojiUrl(parsed.data.url)) return NextResponse.json({ error: "Upload the image first (or use a Tenor GIF)" }, { status: 400 });
+  if (!isEmojiUrl(parsed.data.url)) return NextResponse.json({ error: "Upload the image first (or use a Klipy GIF)" }, { status: 400 });
   const count = await prisma.customEmoji.count({ where: { serverId: params.serverId } });
   if (count >= 50) return NextResponse.json({ error: "Emoji limit reached (50 per server)" }, { status: 400 });
   try {
@@ -45,7 +45,7 @@ export async function POST(req: Request, { params }: { params: { serverId: strin
         serverId: params.serverId,
         name: parsed.data.name.toLowerCase(),
         url: parsed.data.url,
-        animated: parsed.data.url.toLowerCase().endsWith(".gif") || parsed.data.url.includes("tenor.com"),
+        animated: parsed.data.url.toLowerCase().endsWith(".gif") || parsed.data.url.includes("klipy.com"),
       },
     });
     return NextResponse.json({ emoji });

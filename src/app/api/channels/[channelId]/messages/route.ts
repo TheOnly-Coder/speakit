@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { sanitizeAttachments } from "@/lib/attachments";
+import { canInChannel } from "@/lib/channelPerms";
 import { sendMessageSchema } from "@/lib/validations";
 
 async function canAccessChannel(userId: string, channelId: string) {
@@ -19,6 +20,7 @@ export async function GET(req: Request, { params }: { params: { channelId: strin
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const channel = await canAccessChannel(userId, params.channelId);
   if (!channel) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await canInChannel(userId, channel, "view"))) return NextResponse.json({ error: "You can't view this channel" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const cursor = searchParams.get("cursor");
@@ -46,6 +48,7 @@ export async function POST(req: Request, { params }: { params: { channelId: stri
   const channel = await canAccessChannel(userId, params.channelId);
   if (!channel) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (channel.type !== "TEXT") return NextResponse.json({ error: "Cannot send messages in voice channels" }, { status: 400 });
+  if (!(await canInChannel(userId, channel, "send"))) return NextResponse.json({ error: "You can't talk in this channel" }, { status: 403 });
 
   const body = await req.json();
   const parsed = sendMessageSchema.safeParse(body);

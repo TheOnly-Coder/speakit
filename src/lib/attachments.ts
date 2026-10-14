@@ -17,8 +17,8 @@ export type CleanAttachment = {
 const MAX_ATTACHMENTS = 5;
 const MAX_SIZE = 8 * 1024 * 1024; // 8 MB — friendly to the Supabase free tier
 const ALLOWED_MIME = /^(image\/(png|jpe?g|gif|webp|bmp|svg\+xml)|audio\/(mpeg|wav|ogg|mp4|webm|x-wav))$/;
-// Remote GIFs must come from Tenor (used by the GIF picker + favorites).
-const TENOR_PREFIX = "https://media.tenor.com/";
+// Remote GIFs must come from Klipy (used by the GIF picker + favorites).
+const KLIPY_PREFIX = "https://static.klipy.com/";
 
 function storageBase(): string {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -35,8 +35,8 @@ export function sanitizeAttachments(input: unknown): CleanAttachment[] {
     const { url, name, size, mime } = item as IncomingAttachment;
     if (typeof url !== "string" || url.length > 2048) continue;
     const fromStorage = !!prefix && url.startsWith(prefix);
-    const fromTenor = url.startsWith(TENOR_PREFIX);
-    if (!fromStorage && !fromTenor) continue;
+    const fromKlipy = url.startsWith(KLIPY_PREFIX);
+    if (!fromStorage && !fromKlipy) continue;
     const cleanMime = typeof mime === "string" ? mime.slice(0, 64) : "";
     if (!ALLOWED_MIME.test(cleanMime)) continue;
     const cleanSize = typeof size === "number" && size > 0 ? Math.min(Math.floor(size), MAX_SIZE) : 0;

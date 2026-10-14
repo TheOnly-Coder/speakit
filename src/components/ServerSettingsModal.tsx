@@ -7,10 +7,18 @@ import { Modal, Field, inputCls, PrimaryButton } from "./ui";
 import { Avatar, ServerIcon } from "./Avatar";
 import { useAppStore, type RoleItem } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { myServerPerms } from "@/lib/clientPerms";
 import { getSocket } from "@/lib/socket";
 import { PERMISSIONS, PERMISSION_LABELS, type Permission } from "@/lib/permissions";
 
-const TABS = ["Overview", "Channels", "Roles", "Emoji", "Members", "Invite"] as const;
+const ALL_TABS = [
+  { id: "Overview", perm: "manageServer" },
+  { id: "Channels", perm: "manageChannels" },
+  { id: "Roles", perm: "manageRoles" },
+  { id: "Emoji", perm: "manageEmoji" },
+  { id: "Members", perm: null }, // visible with any moderation perm; buttons gated individually
+  { id: "Invite", perm: "manageServer" },
+] as const;
 
 function broadcast(serverId: string) {
   try {
@@ -22,10 +30,32 @@ function broadcast(serverId: string) {
 
 export function ServerSettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { serverDetail, activeServerId, refreshServerDetail } = useAppStore();
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
+  const { user } = useAuthStore();
+  const [tab, setTab] = useState<string>("Overview");
+
+  const myPerms = serverDetail ? myServerPerms(serverDetail, user?.id) : new Set<string>();
+  const canSee = (perm: string | null) => {
+    if (!perm) {
+      return (
+        serverDetail?.ownerId === user?.id ||
+        ["manageRoles", "kickMembers", "banMembers"].some((p) => myPerms.has(p))
+      );
+    }
+    return myPerms.has(perm);
+  };
+  const tabs = ALL_TABS.filter((t) => canSee(t.perm));
 
   useEffect(() => {
-    if (open) setTab("Overview");
+    if (open) {
+      const first = ALL_TABS.find((t) =>
+        t.perm === null
+          ? serverDetail?.ownerId === user?.id ||
+            ["manageRoles", "kickMembers", "banMembers"].some((p) => myPerms.has(p))
+          : myPerms.has(t.perm)
+      );
+      setTab(first?.id ?? "Overview");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open ]);
 
   const refresh = async () => {
@@ -41,17 +71,20 @@ export function ServerSettingsModal({ open, onClose }: { open: boolean; onClose:
       {!serverDetail && <div className="text-sm text-speakit-muted">Loading…</div>}
       {serverDetail && (
         <>
+          {tabs.length === 0 && (
+            <div className="py-6 text-center text-sm text-speakit-muted">You don&apos;t have settings permissions here.</div>
+          )}
           <div className="mb-4 flex flex-wrap gap-1">
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
+                key={t.id}
+                onClick={() => setTab(t.id)}
                 className={cn(
                   "rounded px-2.5 py-1.5 text-xs font-semibold",
-                  tab === t ? "bg-speakit-blurple text-white" : "text-speakit-muted hover:bg-white/5"
+                  tab === t.id ? "bg-speakit-blurple text-white" : "text-speakit-muted hover:bg-white/5"
                 )}
               >
-                {t}
+                {t.id}
               </button>
             ))}
           </div>
@@ -463,6 +496,10 @@ function MembersTab({ refresh }: { refresh: () => Promise<void> }) {
   const [msg, setMsg] = useState("");
   const [showBans, setShowBans] = useState(false);
   if (!serverDetail) return null;
+  const myPerms = myServerPerms(serverDetail, user?.id);
+  const canKick = myPerms.has("kickMembers");
+  const canBan = myPerms.has("banMembers");
+  const canRoles = myPerms.has("manageRoles");
 
   const action = async (memberUserId: string, act: "kick" | "ban" | "unban", reason?: string) => {
     const verb = act === "kick" ? "Kick" : act === "ban" ? "Ban" : "Unban";
@@ -497,8 +534,8 @@ function MembersTab({ refresh }: { refresh: () => Promise<void> }) {
               </div>
               {m.id !== user?.id && m.role !== "owner" && (
                 <div className="flex gap-1">
-                  <button onClick={() => void action(m.id, "kick")} className="rounded bg-white/10 px-2 py-1 text-[11px] text-white hover:bg-white/20">Kick</button>
-                  <button onClick={() => { const reason = prompt("Ban reason (optional):") ?? ""; void action(m.id, "ban", reason); }} className="rounded bg-red-500/20 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/30">Ban</button>
+                  {canKick && <button onClick={() => void action(m.id, "kick")} className="rounded bg-white/10 px-2 py-1 text-[11px] text-white hover:bg-white/20">Kick</button>}
+                  {canBan && <button onClick={() => { const reason = prompt("Ban reason (optional):") ?? ""; void action(m.id, "ban", reason); }} className="rounded bg-red-500/20 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/30">Ban</button>}
                 </div>
               )}
             </div>
@@ -509,7 +546,7 @@ function MembersTab({ refresh }: { refresh: () => Promise<void> }) {
                 ))}
               </div>
             )}
-            {m.id !== user?.id && m.role !== "owner" && serverDetail.roles.length > 0 && (
+            {m.id !== user?.id && m.role !== "owner" && canRoles && serverDetail.roles.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1 pl-9">
                 {serverDetail.roles.map((r) => {
                   const has = m.roleIds.includes(r.id);
@@ -518,11 +555,17 @@ function MembersTab({ refresh }: { refresh: () => Promise<void> }) {
                       key={r.id}
                       title={has ? `Remove ${r.name}` : `Give ${r.name}`}
                       onClick={async () => {
-                        await fetch(`/api/servers/${serverDetail.id}/members/${m.id}/roles`, {
+                        setMsg("");
+                        const res = await fetch(`/api/servers/${serverDetail.id}/members/${m.id}/roles`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ roleId: r.id, action: has ? "remove" : "add" }),
                         });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setMsg(data.error ?? "Couldn't change roles");
+                          return;
+                        }
                         await refresh();
                       }}
                       className={`rounded px-1.5 py-0.5 text-[10px] ${has ? "text-white" : "text-speakit-muted hover:text-white"}`}
@@ -542,7 +585,7 @@ function MembersTab({ refresh }: { refresh: () => Promise<void> }) {
               <div className="truncate text-sm text-white">{b.displayName}</div>
               <div className="truncate text-[11px] text-speakit-muted">@{b.username}{b.reason ? ` — ${b.reason}` : ""}</div>
             </div>
-            <button onClick={() => void action(b.userId, "unban")} className="rounded bg-white/10 px-2 py-1 text-[11px] text-white hover:bg-white/20">Unban</button>
+            <button onClick={() => void action(b.userId, "unban")} disabled={!canBan} className="rounded bg-white/10 px-2 py-1 text-[11px] text-white hover:bg-white/20 disabled:opacity-40">Unban</button>
           </div>
         ))}
         {showBans && serverDetail.bans.length === 0 && <div className="py-3 text-center text-xs text-speakit-muted">Nobody banned. Keep it that way 🤝</div>}

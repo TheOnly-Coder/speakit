@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
-import { avatarColorFor, normalizeUsername } from "@/lib/auth";
+import { avatarColorFor, normalizeUsername, ensureForceJoin } from "@/lib/auth";
 import { registerSchema } from "@/lib/validations";
 import { toSafeUser } from "@/lib/types";
 
@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     if (!data.session) {
       return NextResponse.json({ needsConfirmation: true, email });
     }
+    await ensureForceJoin(profile.id);
     return NextResponse.json({ user: toSafeUser(profile) });
   } catch (e) {
     console.error("register error", e);

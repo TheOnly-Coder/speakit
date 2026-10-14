@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
+import { canInChannel } from "@/lib/channelPerms";
 import { z } from "zod";
 
 const CUSTOM_RE = /^:([a-z0-9_]{2,32}):$/;
@@ -18,6 +19,9 @@ export async function POST(req: Request, { params }: { params: { messageId: stri
     where: { userId_serverId: { userId, serverId: msg.channel.serverId } },
   });
   if (!member) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await canInChannel(userId, msg.channel, "react"))) {
+    return NextResponse.json({ error: "You can't react in this channel" }, { status: 403 });
+  }
 
   const raw = parsed.data.emoji;
   const custom = CUSTOM_RE.exec(raw);

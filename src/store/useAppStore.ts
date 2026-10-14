@@ -115,6 +115,11 @@ type AppState = {
   pendingOut: { id: string; user: FriendUser }[];
   conversations: DMConversation[];
   myEmojis: ServerEmoji[];
+  mutedChannels: string[];
+  mutedDMs: string[];
+  mentionCounts: Record<string, number>;
+  dmMentionCounts: Record<string, number>;
+  totalMentions: number;
   showMembers: boolean;
   loadingServers: boolean;
 
@@ -130,6 +135,10 @@ type AppState = {
   refreshFriends: () => Promise<void>;
   refreshDMs: () => Promise<void>;
   refreshMyEmojis: () => Promise<void>;
+  refreshMutes: () => Promise<void>;
+  refreshMentions: () => Promise<void>;
+  toggleMute: (kind: "channel" | "dm", targetId: string) => Promise<boolean>;
+  markMentionsRead: (key: { channelId?: string; conversationId?: string }) => Promise<void>;
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -144,6 +153,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   pendingOut: [],
   conversations: [],
   myEmojis: [],
+  mutedChannels: [],
+  mutedDMs: [],
+  mentionCounts: {},
+  dmMentionCounts: {},
+  totalMentions: 0,
   showMembers: true,
   loadingServers: false,
 
@@ -200,6 +214,46 @@ export const useAppStore = create<AppState>((set, get) => ({
       const res = await fetch("/api/emojis/mine", { cache: "no-store" });
       const data = await res.json();
       if (res.ok) set({ myEmojis: data.emojis ?? [] });
+    } catch { /* ignore */ }
+  },
+  refreshMutes: async () => {
+    try {
+      const res = await fetch("/api/mutes", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) set({ mutedChannels: data.channels ?? [], mutedDMs: data.dms ?? [] });
+    } catch { /* ignore */ }
+  },
+  refreshMentions: async () => {
+    try {
+      const res = await fetch("/api/mentions", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) set({ mentionCounts: data.byChannel ?? {}, dmMentionCounts: data.byDm ?? {}, totalMentions: data.total ?? 0 });
+    } catch { /* ignore */ }
+  },
+  toggleMute: async (kind, targetId) => {
+    try {
+      const res = await fetch("/api/mutes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, targetId }),
+      });
+      const data = await res.json();
+      if (!res.ok) return kind === "channel" ? get().mutedChannels.includes(targetId) : get().mutedDMs.includes(targetId);
+      await get().refreshMutes();
+      await get().refreshMentions();
+      return !!data.muted;
+    } catch {
+      return false;
+    }
+  },
+  markMentionsRead: async (key) => {
+    try {
+      await fetch("/api/mentions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(key),
+      });
+      await get().refreshMentions();
     } catch { /* ignore */ }
   },
 }));

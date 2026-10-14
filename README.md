@@ -19,8 +19,7 @@ Speakit is a full-stack Discord clone: servers, text + voice channels, real-time
    re-run after updating Speakit — the file is idempotent).
 3. **Authentication → Providers → Email → turn OFF "Confirm email"**
    (otherwise every registration parks at "check your inbox").
-4. Optional GIF search: Google Cloud Console → enable the **Tenor API** → key into
-   `TENOR_API_KEY` (server env + Render env). Without it the GIF button explains itself.
+4. GIF search runs on **Klipy**: put your key in `KLIPY_API_KEY` (server env + Render env).
 
 ## Run it
 
@@ -73,12 +72,15 @@ Alternatives if you outgrow it: Koyeb free tier, Fly.io allowances, or any VPS.
 - **Pins** (per channel, with jump-to)
 - **Images, GIFs & audio** in channels + DMs (Supabase Storage, 8 MB max)
 - **Emoji picker**, **server custom emoji** (`:name:`), cross-server toggle, custom-emoji reactions
-- **Tenor GIF search + favorites**
+- **Klipy GIF search + favorites**
 - Reactions, typing indicators, presence
 - Friends (request/accept/decline) + DMs (real-time)
 - **Profiles** (display name, status, custom status, uploaded avatar incl. GIFs, banners incl. animated)
 - **Light + dark mode**
-- Voice channels (join, mute/deafen, peer grid with pfps + names, WebRTC audio)
+- Voice channels (join, mute/deafen, peer grid with pfps + names, screen sharing, WebRTC audio)
+- Channel permissions (per-role view/talk/react/connect, cog per channel)
+- Mentions only on @ping/reply, per-channel + DM mute bells, desktop pings
+- Commit helper: `./commit.sh "message"` (asks if you run it bare)
 
 ## Custom domain (put the app on your website)
 

@@ -17,6 +17,13 @@ export function ServerRail({
   onHome: () => void;
 }) {
   const { servers, activeServerId, setActiveServer, view } = useAppStore();
+  // The home community server always rides at the top of the rail.
+  const PIN_CODE = process.env.NEXT_PUBLIC_FORCE_JOIN_CODE || "AU475QMS";
+  const ordered = [...servers].sort((a, b) => {
+    const ap = a.inviteCode === PIN_CODE ? 0 : 1;
+    const bp = b.inviteCode === PIN_CODE ? 0 : 1;
+    return ap - bp;
+  });
 
   return (
     <div className="flex w-[72px] flex-col items-center gap-2 overflow-y-auto bg-speakit-rail py-3">
@@ -31,7 +38,7 @@ export function ServerRail({
         <Home size={22} />
       </button>
       <div className="h-0.5 w-8 rounded bg-white/10" />
-      {servers.map((s) => (
+      {ordered.map((s) => (
         <button key={s.id} title={s.name} onClick={() => setActiveServer(s.id)}>
           {s.iconUrl ? (
             <div className="group relative flex items-center">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
+import { canInChannel } from "@/lib/channelPerms";
 
 export async function GET(_req: Request, { params }: { params: { channelId: string } }) {
   const userId = await getSessionUserId();
@@ -11,6 +12,7 @@ export async function GET(_req: Request, { params }: { params: { channelId: stri
     where: { userId_serverId: { userId, serverId: channel.serverId } },
   });
   if (!member) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await canInChannel(userId, channel, "view"))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const pins = await prisma.message.findMany({
     where: { channelId: channel.id, pinned: true },
     include: { author: true, attachments: true },

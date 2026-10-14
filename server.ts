@@ -5,6 +5,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { prisma } from "./src/lib/db";
 import { sanitizeAttachments } from "./src/lib/attachments";
+import { canInChannel } from "./src/lib/channelPerms";
 
 const dev = process.env.NODE_ENV !== "production";
 // Always bind all interfaces. Hosts like Render/Docker set HOSTNAME to a
@@ -185,6 +186,18 @@ void app.prepare().then(() => {
       }
     });
 
+    // Ping listed users to refetch friends/DMs (used after requests accept/decline/remove).
+    socket.on("friend:refresh", async ({ userIds }: { userIds: string[] }) => {
+      try {
+        if (!Array.isArray(userIds)) return;
+        for (const id of userIds.slice(0, 5)) {
+          if (typeof id === "string" && id) io.to(`user:${id}`).emit("friend:updated", {});
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+
     // Kick / ban / unban with live notification to the target.
     socket.on(
       "server:member:action",
@@ -253,6 +266,7 @@ void app.prepare().then(() => {
           const channel = await canAccessChannel(userId, payload.channelId);
           if (!channel) return ack?.({ error: "Forbidden" });
           if (channel.type !== "TEXT") return ack?.({ error: "Cannot send messages in voice channels" });
+          if (!(await canInChannel(userId, channel, "send"))) return ack?.({ error: "You can't talk in this channel" });
 
           let replyToId: string | undefined;
           if (payload.replyToId) {
@@ -290,6 +304,34 @@ void app.prepare().then(() => {
           };
           io.to(`channel:${payload.channelId}`).emit("channel:message:new", out);
           ack?.({ ok: true, message: out });
+          // Pings: @mentions + replies only (muted channels stay silent).
+          void (async () => {
+            try {
+              const names = new Set(
+                [...content.matchAll(/@([a-z0-9_.]{2,24})/gi)].map((m) => m[1].toLowerCase())
+              );
+              if (message.replyTo) names.add(message.replyTo.author.username.toLowerCase());
+              names.delete(message.author.username.toLowerCase());
+              if (names.size === 0) return;
+              const members = await prisma.serverMember.findMany({
+                where: { serverId: channel.serverId },
+                include: { user: { select: { id: true, username: true } } },
+              });
+              const targets = members
+                .filter((m) => names.has(m.user.username.toLowerCase()) && m.user.id !== userId)
+                .map((m) => m.user.id);
+              for (const targetId of [...new Set(targets)]) {
+                const muted = await prisma.mute.findUnique({
+                  where: { userId_kind_targetId: { userId: targetId, kind: "channel", targetId: channel.id } },
+                });
+                if (muted) continue;
+                await prisma.mention.create({ data: { userId: targetId, messageId: message.id, channelId: channel.id } });
+                io.to(`user:${targetId}`).emit("mention:new", { channelId: channel.id, messageId: message.id });
+              }
+            } catch (e) {
+              console.error("mention notify failed", e);
+            }
+          })();
         } catch (e) {
           console.error("channel:message:send error", e);
           ack?.({ error: "Failed to send" });
@@ -366,6 +408,7 @@ void app.prepare().then(() => {
         if (!msg) return ack?.({ error: "Not found" });
         const ok = await isServerMember(userId, msg.channel.serverId);
         if (!ok) return ack?.({ error: "Forbidden" });
+        if (!(await canInChannel(userId, msg.channel, "react"))) return ack?.({ error: "You can't react in this channel" });
 
         const existing = await prisma.reaction.findUnique({ where: { messageId_userId_emoji: { messageId, userId, emoji: clean } } });
         if (existing) {
@@ -451,6 +494,18 @@ void app.prepare().then(() => {
           io.to(`user:${otherId}`).emit("dm:notify", { conversationId: convo.id, message: out });
           io.to(`user:${userId}`).emit("dm:notify", { conversationId: convo.id, message: out });
           ack?.({ ok: true, message: out });
+          void (async () => {
+            try {
+              const muted = await prisma.mute.findUnique({
+                where: { userId_kind_targetId: { userId: otherId, kind: "dm", targetId: convo.id } },
+              });
+              if (muted) return;
+              await prisma.mention.create({ data: { userId: otherId, conversationId: convo.id, directMessageId: dm.id } });
+              io.to(`user:${otherId}`).emit("mention:new", { conversationId: convo.id });
+            } catch (e) {
+              console.error("dm mention failed", e);
+            }
+          })();
         } catch (e) {
           console.error("dm send error", e);
           ack?.({ error: "Failed to send DM" });
@@ -470,6 +525,8 @@ void app.prepare().then(() => {
         const channel = await canAccessChannel(userId, channelId);
         if (!channel) return ack?.({ error: "Forbidden" });
         if (channel.type !== "VOICE") return ack?.({ error: "Not a voice channel" });
+        if (!(await canInChannel(userId, channel, "view"))) return ack?.({ error: "You can't see this channel" });
+        if (!(await canInChannel(userId, channel, "connect"))) return ack?.({ error: "You can't join this voice channel" });
 
         // Leave previous voice channel
         const prev = socketVoiceChannel.get(socket.id);

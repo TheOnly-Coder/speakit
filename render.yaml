@@ -17,5 +17,5 @@ services:
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         sync: false
-      - key: TENOR_API_KEY
+      - key: KLIPY_API_KEY
         sync: false

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, MessageCircle, UserPlus, Plus, Sun, Moon } from "lucide-react";
+import { LogOut, MessageCircle, UserPlus, Plus, Sun, Moon, Bell, BellOff } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
 import { useThemeStore } from "@/store/useThemeStore";
@@ -25,6 +25,7 @@ import {
   SettingsModal,
 } from "@/components/Modals";
 import { ServerSettingsModal } from "@/components/ServerSettingsModal";
+import { ChannelSettingsModal } from "@/components/ChannelSettingsModal";
 import { BrowseServersModal } from "@/components/BrowseServersModal";
 import { ProfileModal } from "@/components/ProfileModal";
 
@@ -59,6 +60,8 @@ export default function HomePage() {
   const [showNewDM, setShowNewDM] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showServerSettings, setShowServerSettings] = useState(false);
+  const [showChannelSettings, setShowChannelSettings] = useState(false);
+  const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   const [showBrowse, setShowBrowse] = useState(false);
   const [socketStatus, setSocketStatus] = useState("connecting");
   const { theme, toggle: toggleTheme, apply: applyTheme } = useThemeStore();
@@ -81,6 +84,8 @@ export default function HomePage() {
     void refreshFriends();
     void refreshDMs();
     void useAppStore.getState().refreshMyEmojis();
+    void useAppStore.getState().refreshMutes();
+    void useAppStore.getState().refreshMentions();
   }, [user, refreshServers, refreshFriends, refreshDMs]);
 
   // Auto-select first server/channel or home
@@ -113,7 +118,24 @@ export default function HomePage() {
       setSocketToken(session.access_token);
     });
     const socket = getSocket();
-    const onConnect = () => setSocketStatus("live");
+    const onConnect = () => {
+      setSocketStatus("live");
+      // Reconnects lose all room memberships: rejoin + resync everything.
+      const st = useAppStore.getState();
+      if (st.activeServerId) socket.emit("server:join", { serverId: st.activeServerId });
+      void st.refreshServers();
+      void st.refreshFriends();
+      void st.refreshDMs();
+      void st.refreshMutes();
+      void st.refreshMentions();
+      void st.refreshMyEmojis();
+      if (st.activeServerId) void st.refreshServerDetail(st.activeServerId);
+      try {
+        window.dispatchEvent(new Event("speakit:resync"));
+      } catch {
+        /* ignore */
+      }
+    };
     const onDisconnect = () => setSocketStatus("reconnecting");
     const onDMNotify = () => {
       void useAppStore.getState().refreshDMs();
@@ -143,6 +165,26 @@ export default function HomePage() {
         st.setView("home");
       }
     };
+    const onFriendUpdated = () => {
+      const st = useAppStore.getState();
+      void st.refreshFriends();
+      void st.refreshDMs();
+    };
+    const onMention = (p: { channelId?: string; conversationId?: string }) => {
+      const st = useAppStore.getState();
+      void st.refreshMentions();
+      // Desktop ping only for real pings, only when the tab is hidden.
+      try {
+        if (typeof document !== "undefined" && document.hidden && "Notification" in window && Notification.permission === "granted") {
+          const where = p.channelId
+            ? `#${st.serverDetail?.channels.find((c) => c.id === p.channelId)?.name ?? "a channel"}`
+            : "your DMs";
+          new Notification("Speakit — you were mentioned", { body: `Someone pinged you in ${where}.` });
+        }
+      } catch {
+        /* ignore */
+      }
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -151,6 +193,8 @@ export default function HomePage() {
     socket.on("voice:channel:update", onVoiceUpdate);
     socket.on("server:updated", onServerUpdated);
     socket.on("server:kicked", onKicked);
+    socket.on("friend:updated", onFriendUpdated);
+    socket.on("mention:new", onMention);
     if (socket.connected) setSocketStatus("live");
 
     return () => {
@@ -162,6 +206,8 @@ export default function HomePage() {
       socket.off("voice:channel:update", onVoiceUpdate);
       socket.off("server:updated", onServerUpdated);
       socket.off("server:kicked", onKicked);
+      socket.off("friend:updated", onFriendUpdated);
+      socket.off("mention:new", onMention);
     };
   }, [user]);
 
@@ -219,6 +265,10 @@ export default function HomePage() {
           onInvite={() => setShowInvite(true)}
           onOpenSettings={() => setShowSettings(true)}
           onOpenServerSettings={() => setShowServerSettings(true)}
+          onOpenChannelSettings={(id) => {
+            setChannelSettingsId(id);
+            setShowChannelSettings(true);
+          }}
         />
       ) : (
         <DMSidebar onAddFriend={() => setShowAddFriend(true)} onOpenSettings={() => setShowSettings(true)} />
@@ -232,6 +282,7 @@ export default function HomePage() {
             {socketStatus === "live" ? "Connected" : "Connecting…"} • Speakit v1.0
           </span>
           <span className="flex items-center gap-2">
+            <NotifyBell />
             <button onClick={toggleTheme} className="flex items-center gap-1 hover:text-white" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
               {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
             </button>
@@ -273,9 +324,42 @@ export default function HomePage() {
       <NewDMModal open={showNewDM} onClose={() => setShowNewDM(false)} />
       <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
       <ServerSettingsModal open={showServerSettings} onClose={() => setShowServerSettings(false)} />
+      <ChannelSettingsModal open={showChannelSettings} onClose={() => { setShowChannelSettings(false); setChannelSettingsId(null); }} channelId={channelSettingsId} />
       <BrowseServersModal open={showBrowse} onClose={() => setShowBrowse(false)} />
       <ProfileModal />
     </div>
+  );
+}
+
+function NotifyBell() {
+  const [perm, setPerm] = useState<string>(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
+  const click = async () => {
+    try {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") {
+        setPerm("granted");
+        return;
+      }
+      const result = await Notification.requestPermission();
+      setPerm(result);
+    } catch {
+      /* ignore */
+    }
+  };
+  return (
+    <button
+      onClick={() => void click()}
+      className="flex items-center gap-1 hover:text-white"
+      title={
+        perm === "granted"
+          ? "Desktop pings ON (mentions while tab is hidden)"
+          : perm === "denied"
+            ? "Desktop pings blocked by browser settings"
+            : "Enable desktop pings for @mentions"
+      }
+    >
+      {perm === "granted" ? <Bell size={12} /> : <BellOff size={12} />}
+    </button>
   );
 }
 

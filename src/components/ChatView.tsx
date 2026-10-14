@@ -92,6 +92,8 @@ export function ChatView({ channelId }: { channelId: string }) {
       }
       const socket = getSocket();
       socket.emit("channel:join", { channelId });
+      // Opening the channel clears its pings.
+      void useAppStore.getState().markMentionsRead({ channelId });
     })();
     return () => {
       cancelled = true;
@@ -99,6 +101,24 @@ export function ChatView({ channelId }: { channelId: string }) {
   }, [channelId, key, setMessages, scrollToBottom]);
 
   // Socket listeners
+  useEffect(() => {
+    const resync = () => {
+      // Reconnects drop room membership: rejoin + reload this channel.
+      getSocket().emit("channel:join", { channelId });
+      void (async () => {
+        try {
+          const res = await fetch(`/api/channels/${channelId}/messages?limit=100`, { cache: "no-store" });
+          const data = await res.json();
+          if (res.ok) setMessages(key, (data.messages ?? []).map((m: Record<string, unknown>) => toChatMessage(m)));
+        } catch {
+          /* ignore */
+        }
+      })();
+    };
+    window.addEventListener("speakit:resync", resync);
+    return () => window.removeEventListener("speakit:resync", resync);
+  }, [channelId, key, setMessages]);
+
   useEffect(() => {
     const socket = getSocket();
     const onNew = (msg: Record<string, unknown>) => {
@@ -362,6 +382,19 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
     voiceActions.leave();
   };
 
+  const screens = isConnectedHere ? Object.entries(voice.screenStreams) : [];
+
+  useEffect(() => {
+    // Attach remote screen streams to their <video> tiles (runs after every render — cheap).
+    for (const [userId, stream] of screens) {
+      const el = document.getElementById(`voice-screen-${userId}`) as HTMLVideoElement | null;
+      if (el && el.srcObject !== stream) {
+        el.srcObject = stream;
+        void el.play().catch(() => {});
+      }
+    }
+  });
+
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-speakit-bg">
       <div className="flex h-12 items-center gap-2 border-b border-black/30 px-4">
@@ -417,6 +450,13 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                 >
                   {voice.selfDeafened ? "Undeafen" : "Deafen"}
                 </button>
+                <button
+                  onClick={() => void (voice.sharingSelf ? voiceActions.stopShare() : voiceActions.startShare())}
+                  title={voice.sharingSelf ? "Stop sharing your screen" : "Share your screen"}
+                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+                >
+                  {voice.sharingSelf ? "Stop share" : "Share screen"}
+                </button>
                 <button onClick={handleLeave} className="rounded-md bg-red-500 px-3 py-1.5 text-sm text-white hover:bg-red-600">
                   Disconnect
                 </button>
@@ -425,7 +465,7 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div className="flex flex-col items-center gap-2 rounded-lg bg-[#2b2d31] p-4">
                 <Avatar name="You" color="#5865f2" size={56} />
-                <span className="text-sm font-semibold text-white">You {voice.selfMuted ? "(muted)" : ""}</span>
+                <span className="text-sm font-semibold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
               </div>
               {peers.map((p) => (
                 <div key={p.userId} className="flex flex-col items-center gap-2 rounded-lg bg-[#2b2d31] p-4">
@@ -435,6 +475,22 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                 </div>
               ))}
             </div>
+            {screens.length > 0 && (
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {screens.map(([userId]) => {
+                  const peer = peers.find((p) => p.userId === userId);
+                  return (
+                    <div key={userId} className="overflow-hidden rounded-lg bg-black">
+                      <video id={`voice-screen-${userId}`} autoPlay playsInline muted={false} className="max-h-72 w-full object-contain" />
+                      <div className="px-3 py-1.5 text-xs text-speakit-muted">🖥️ {peer ? peer.displayName : "Someone"}&apos;s screen</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {voice.sharingSelf && (
+              <p className="mt-2 text-center text-xs text-speakit-green">You&apos;re sharing your screen — stop sharing from your browser&apos;s picker or the button above.</p>
+            )}
             <p className="mt-3 text-center text-xs text-speakit-muted">Audio plays globally — you can browse other channels while connected.</p>
           </div>
         )}

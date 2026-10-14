@@ -50,5 +50,5 @@ export async function POST(req: Request) {
   }
 
   const fr = await prisma.friendship.create({ data: { requesterId: userId, receiverId: target.id, status: "PENDING" } });
-  return NextResponse.json({ request: fr });
+  return NextResponse.json({ request: fr, receiverId: target.id });
 }

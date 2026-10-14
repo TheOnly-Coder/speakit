@@ -210,6 +210,12 @@ export function AddFriendModal({ open, onClose }: { open: boolean; onClose: () =
       setOk(`Request sent to @${username.trim()}!`);
       setUsername("");
       await useAppStore.getState().refreshFriends();
+      try {
+        const { getSocket } = await import("@/lib/socket");
+        if (data.receiverId) getSocket().emit("friend:refresh", { userIds: [data.receiverId] });
+      } catch {
+        /* ignore */
+      }
     } finally {
       setBusy(false);
     }

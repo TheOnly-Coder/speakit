@@ -16,8 +16,8 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = z.object({ url: z.string().max(2048), preview: z.string().max(2048).optional().default("") }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid GIF" }, { status: 400 });
-  if (!parsed.data.url.startsWith("https://media.tenor.com/")) {
-    return NextResponse.json({ error: "Only Tenor GIFs can be favorited" }, { status: 400 });
+  if (!parsed.data.url.startsWith("https://static.klipy.com/")) {
+    return NextResponse.json({ error: "Only Klipy GIFs can be favorited" }, { status: 400 });
   }
   const existing = await prisma.favoriteGif.findFirst({ where: { userId, url: parsed.data.url } });
   if (existing) return NextResponse.json({ gif: existing });

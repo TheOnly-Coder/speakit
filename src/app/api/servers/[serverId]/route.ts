@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
+import { visibleChannels } from "@/lib/channelPerms";
 import { z } from "zod";
 
 export async function GET(_req: Request, { params }: { params: { serverId: string } }) {
@@ -41,7 +42,7 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
       discoverable: server.discoverable,
       allowExternalEmoji: server.allowExternalEmoji,
       ownerId: server.ownerId,
-      channels: server.channels,
+      channels: await visibleChannels(userId, server.id, server.channels),
       categories: server.categories,
       roles: server.roles.map((r) => ({
         id: r.id,
@@ -128,7 +129,7 @@ export async function PATCH(req: Request, { params }: { params: { serverId: stri
 function isServerImageUrl(url: string): boolean {
   const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
   if (base && url.startsWith(`${base}/storage/v1/object/public/`)) return true;
-  if (url.startsWith("https://media.tenor.com/")) return true;
+  if (url.startsWith("https://static.klipy.com/")) return true;
   return false;
 }
 

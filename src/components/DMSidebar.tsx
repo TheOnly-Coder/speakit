@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, Settings } from "lucide-react";
+import { UserPlus, Settings, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -9,7 +9,7 @@ import { useProfileStore } from "@/store/useProfileStore";
 import { Avatar } from "./Avatar";
 
 export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => void; onOpenSettings: () => void }) {
-  const { friends, pendingIn, pendingOut, conversations, activeDMId, setActiveDM } = useAppStore();
+  const { friends, pendingIn, pendingOut, conversations, activeDMId, setActiveDM, mutedDMs, dmMentionCounts, toggleMute, markMentionsRead } = useAppStore();
   const { user } = useAuthStore();
   const [tab, setTab] = useState<"all" | "pending">("all");
 
@@ -51,22 +51,35 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
               </button>
             ))}
             <div className="px-2 py-1 pt-3 text-[11px] font-bold uppercase text-speakit-muted">Direct Messages</div>
-            {conversations.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setActiveDM(c.id)}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5",
-                  activeDMId === c.id && "bg-white/10"
-                )}
-              >
-                <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={32} status={c.other.status} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-white">{c.other.displayName}</div>
-                  <div className="truncate text-[11px] text-speakit-muted">{c.lastMessage || "Start a conversation"}</div>
+            {conversations.map((c) => {
+              const muted = mutedDMs.includes(c.id);
+              const pings = dmMentionCounts[c.id] ?? 0;
+              return (
+                <div key={c.id} className={cn("group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5", activeDMId === c.id && "bg-white/10")}>
+                  <button
+                    onClick={() => {
+                      setActiveDM(c.id);
+                      if (pings > 0) void markMentionsRead({ conversationId: c.id });
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={32} status={c.other.status} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-white">{c.other.displayName}</div>
+                      <div className="truncate text-[11px] text-speakit-muted">{c.lastMessage || "Start a conversation"}</div>
+                    </div>
+                    {pings > 0 && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">@{pings}</span>}
+                  </button>
+                  <button
+                    title={muted ? "Unmute DMs" : "Mute DMs"}
+                    onClick={() => void toggleMute("dm", c.id)}
+                    className="hidden rounded p-1 text-speakit-muted hover:text-white group-hover:block"
+                  >
+                    {muted ? <BellOff size={13} /> : <Bell size={13} />}
+                  </button>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </>
         ) : (
           <>
@@ -103,7 +116,14 @@ function PendingRow({ id, username, displayName, color, avatarUrl, incoming }: {
     await useAppStore.getState().refreshDMs();
   };
   const act = async (action: string) => {
-    await fetch(`/api/friends/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+    const res = await fetch(`/api/friends/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+    const data = await res.json().catch(() => ({}));
+    try {
+      const { getSocket } = await import("@/lib/socket");
+      if (data.otherUserId) getSocket().emit("friend:refresh", { userIds: [data.otherUserId] });
+    } catch {
+      /* ignore */
+    }
     await refresh();
   };
   return (

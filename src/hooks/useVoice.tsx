@@ -17,11 +17,21 @@ const RTC_CONFIG: RTCConfiguration = {
 export const voiceActions: {
   join: (channelId: string, serverId: string) => Promise<void>;
   leave: () => void;
+  rejoin: () => Promise<void>;
+  startShare: () => Promise<void>;
+  stopShare: () => void;
 } = {
   join: async () => {
     console.warn("voice: bridge not mounted yet");
   },
   leave: () => {},
+  rejoin: async () => {
+    console.warn("voice: bridge not mounted yet");
+  },
+  startShare: async () => {
+    console.warn("voice: bridge not mounted yet");
+  },
+  stopShare: () => {},
 };
 
 export function useVoice(channelId: string | null, serverId: string | null) {
@@ -29,6 +39,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
   const { peers, setPeers, upsertPeer, removePeer, setChannel, selfMuted, selfDeafened, setJoining } = useVoiceStore();
   const pcs = useRef(new Map<string, RTCPeerConnection>());
   const localStream = useRef<MediaStream | null>(null);
+  const localScreen = useRef<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const channelRef = useRef<string | null>(null);
   const joinRef = useRef<(c: string, s: string) => Promise<void>>(async () => {});
@@ -41,6 +52,19 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     });
     pcs.current.clear();
     setRemoteStreams({});
+  }, []);
+
+  const renegotiate = useCallback(async (peerUserId: string) => {
+    const pc = pcs.current.get(peerUserId);
+    const cid = channelRef.current;
+    if (!pc || !cid) return;
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      getSocket().emit("voice:signal", { toUserId: peerUserId, channelId: cid, kind: "offer", payload: offer });
+    } catch (e) {
+      console.error("renegotiate failed", e);
+    }
   }, []);
 
   const createPC = useCallback(
@@ -67,7 +91,11 @@ export function useVoice(channelId: string | null, serverId: string | null) {
       };
       pc.ontrack = (e) => {
         const stream = e.streams[0];
-        if (stream) {
+        if (!stream) return;
+        // Screen shares carry video; voice carries audio-only.
+        if (stream.getVideoTracks().length > 0) {
+          useVoiceStore.getState().setScreenStream(peerUserId, stream);
+        } else {
           setRemoteStreams((prev) => ({ ...prev, [peerUserId]: stream }));
         }
       };
@@ -136,6 +164,72 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     [channelId, serverId, user, createPC, setChannel, setJoining, setPeers]
   );
 
+  const stopShare = useCallback(() => {
+    const st = useVoiceStore.getState();
+    try {
+      localScreen.current?.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          /* ignore */
+        }
+      });
+    } catch {
+      /* ignore */
+    }
+    localScreen.current = null;
+    st.setSharingSelf(false);
+    st.setScreenStream("self", null);
+    // Drop screen senders everywhere and renegotiate so peers remove the video.
+    pcs.current.forEach((pc, peerId) => {
+      let changed = false;
+      pc.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === "video") {
+          try {
+            pc.removeTrack(sender);
+            changed = true;
+          } catch {
+            /* ignore */
+          }
+        }
+      });
+      if (changed) void renegotiate(peerId);
+    });
+  }, [renegotiate]);
+
+  const startShare = useCallback(async () => {
+    if (!channelRef.current) return;
+    const st = useVoiceStore.getState();
+    if (st.sharingSelf) return;
+    let screen: MediaStream;
+    try {
+      screen = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    } catch (e) {
+      console.warn("screen share cancelled/unavailable", e);
+      return;
+    }
+    localScreen.current = screen;
+    st.setSharingSelf(true);
+    screen.getVideoTracks().forEach((t) => {
+      t.onended = () => stopShare();
+    });
+    for (const [peerId, pc] of pcs.current) {
+      let added = false;
+      for (const t of screen.getTracks()) {
+        const already = pc.getSenders().some((s) => s.track === t);
+        if (!already) {
+          try {
+            pc.addTrack(t, screen);
+            added = true;
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      if (added) await renegotiate(peerId);
+    }
+  }, [renegotiate, stopShare]);
+
   const leave = useCallback(() => {
     const socket = getSocket();
     try {
@@ -144,7 +238,11 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     try {
       localStream.current?.getTracks().forEach((t) => t.stop());
     } catch { /* ignore */ }
+    try {
+      localScreen.current?.getTracks().forEach((t) => t.stop());
+    } catch { /* ignore */ }
     localStream.current = null;
+    localScreen.current = null;
     cleanupPCs();
     channelRef.current = null;
     useVoiceStore.getState().reset();
@@ -155,7 +253,29 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     joinRef.current = join;
     voiceActions.join = (c, s) => joinRef.current(c, s);
     voiceActions.leave = leave;
-  }, [join, leave]);
+    voiceActions.rejoin = async () => {
+      const st = useVoiceStore.getState();
+      const cid = st.channelId;
+      const sid = st.serverId;
+      if (!cid || !sid) return;
+      try {
+        localStream.current?.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {
+            /* ignore */
+          }
+        });
+      } catch {
+        /* ignore */
+      }
+      localStream.current = null;
+      channelRef.current = null; // bypass the already-here guard
+      await joinRef.current(cid, sid);
+    };
+    voiceActions.startShare = startShare;
+    voiceActions.stopShare = stopShare;
+  }, [join, leave, startShare, stopShare]);
 
   // Signal handling (registered once per bridge mount; bridge is persistent)
   useEffect(() => {
@@ -170,6 +290,22 @@ export function useVoice(channelId: string | null, serverId: string | null) {
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           socket.emit("voice:signal", { toUserId: from, channelId: msg.channelId, kind: "answer", payload: answer });
+          // New peer arrived while we're sharing: push the screen to them too.
+          if (localScreen.current) {
+            let added = false;
+            for (const t of localScreen.current.getTracks()) {
+              const already = pc.getSenders().some((s) => s.track === t);
+              if (!already) {
+                try {
+                  pc.addTrack(t, localScreen.current!);
+                  added = true;
+                } catch {
+                  /* ignore */
+                }
+              }
+            }
+            if (added) await renegotiate(from);
+          }
         } else if (msg.kind === "answer") {
           const pc = pcs.current.get(from);
           if (pc && pc.signalingState !== "stable") {
@@ -202,6 +338,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         pc?.close();
       } catch { /* ignore */ }
       pcs.current.delete(msg.userId);
+      useVoiceStore.getState().setScreenStream(msg.userId, null);
       setRemoteStreams((prev) => {
         const next = { ...prev };
         delete next[msg.userId];
@@ -231,7 +368,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
       socket.off("voice:users", onUsers);
       socket.off("voice:state-updated", onState);
     };
-  }, [createPC, removePeer, setPeers, upsertPeer]);
+  }, [createPC, removePeer, setPeers, upsertPeer, renegotiate]);
 
   // Mute / deafen sync
   useEffect(() => {
@@ -252,6 +389,15 @@ export function VoiceBridge() {
   const serverId = useVoiceStore((s) => s.serverId);
   const selfDeafened = useVoiceStore((s) => s.selfDeafened);
   const { remoteStreams } = useVoice(channelId, serverId);
+
+  useEffect(() => {
+    const resync = () => {
+      const st = useVoiceStore.getState();
+      if (st.channelId) void voiceActions.rejoin();
+    };
+    window.addEventListener("speakit:resync", resync);
+    return () => window.removeEventListener("speakit:resync", resync);
+  }, []);
 
   useEffect(() => {
     Object.entries(remoteStreams).forEach(([userId, stream]) => {

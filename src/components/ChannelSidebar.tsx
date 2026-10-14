@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Hash, Volume2, Plus, Settings, Mic, MicOff, Headphones, PhoneOff, Users, ChevronDown } from "lucide-react";
+import { Hash, Volume2, Plus, Settings, Mic, MicOff, Headphones, PhoneOff, Users, ChevronDown, Cog, Bell, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { voiceActions } from "@/hooks/useVoice";
 import { useAppStore, type ChannelItem } from "@/store/useAppStore";
@@ -9,19 +9,22 @@ import { useVoiceStore } from "@/store/useVoiceStore";
 import { Avatar } from "./Avatar";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProfileStore } from "@/store/useProfileStore";
+import { myServerPerms } from "@/lib/clientPerms";
 
 export function ChannelSidebar({
   onCreateChannel,
   onInvite,
   onOpenSettings,
   onOpenServerSettings,
+  onOpenChannelSettings,
 }: {
   onCreateChannel: (type: "TEXT" | "VOICE", categoryId?: string | null) => void;
   onInvite: () => void;
   onOpenSettings: () => void;
   onOpenServerSettings: () => void;
+  onOpenChannelSettings: (channelId: string) => void;
 }) {
-  const { serverDetail, activeChannelId, setActiveChannel, showMembers, setShowMembers } = useAppStore();
+  const { serverDetail, activeChannelId, setActiveChannel, showMembers, setShowMembers, mutedChannels, mentionCounts, toggleMute, markMentionsRead } = useAppStore();
   const voice = useVoiceStore();
   const { user } = useAuthStore();
   const { openProfile } = useProfileStore();
@@ -29,7 +32,11 @@ export function ChannelSidebar({
 
   if (!serverDetail) return <div className="w-60 bg-speakit-sidebar" />;
 
-  const canManage = serverDetail.ownerId === user?.id;
+  const myPerms = myServerPerms(serverDetail, user?.id);
+  const canManage = myPerms.has("manageChannels");
+  const canOpenSettings =
+    serverDetail.ownerId === user?.id ||
+    ["manageServer", "manageChannels", "manageRoles", "manageEmoji", "kickMembers", "banMembers"].some((p) => myPerms.has(p));
   const textChannels = serverDetail.channels.filter((c) => c.type === "TEXT");
   const voiceChannels = serverDetail.channels.filter((c) => c.type === "VOICE");
   const uncategorized = textChannels.filter((c) => !c.categoryId);
@@ -52,37 +59,68 @@ export function ChannelSidebar({
     return false;
   };
 
-  const renderChannel = (ch: ChannelItem) => (
-    <button
-      key={ch.id}
-      onClick={() => setActiveChannel(ch.id)}
-      className={cn(
-        "group mb-0.5 flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-sm",
-        activeChannelId === ch.id ? "bg-white/10 text-white" : "text-speakit-muted hover:bg-white/5 hover:text-speakit-text"
-      )}
-    >
-      {ch.type === "VOICE" ? <Volume2 size={16} className="shrink-0 opacity-60" /> : <Hash size={16} className="shrink-0 opacity-60" />}
-      <span className="flex-1 truncate">{ch.name}</span>
-      {ch.type === "VOICE" && voice.channelId === ch.id && <span className="h-2 w-2 shrink-0 rounded-full bg-speakit-green" />}
-      {ch.name !== "general" && canManage && (
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => { e.stopPropagation(); void deleteChannel(ch.id); }}
-          className="hidden text-xs text-speakit-muted hover:text-red-400 group-hover:block"
-          title={confirmDelete === ch.id ? "Click again to confirm" : "Delete channel"}
-        >
-          {confirmDelete === ch.id ? "sure?" : "✕"}
+  const renderChannel = (ch: ChannelItem) => {
+    const muted = mutedChannels.includes(ch.id);
+    const pings = mentionCounts[ch.id] ?? 0;
+    return (
+      <button
+        key={ch.id}
+        onClick={() => {
+          setActiveChannel(ch.id);
+          if (pings > 0) void markMentionsRead({ channelId: ch.id });
+        }}
+        className={cn(
+          "group mb-0.5 flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-sm",
+          activeChannelId === ch.id ? "bg-white/10 text-white" : "text-speakit-muted hover:bg-white/5 hover:text-speakit-text"
+        )}
+      >
+        {ch.type === "VOICE" ? <Volume2 size={16} className="shrink-0 opacity-60" /> : <Hash size={16} className="shrink-0 opacity-60" />}
+        <span className="flex-1 truncate">{ch.name}</span>
+        {pings > 0 && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">@{pings}</span>}
+        {muted && <BellOff size={12} className="shrink-0 opacity-60" />}
+        {ch.type === "VOICE" && voice.channelId === ch.id && <span className="h-2 w-2 shrink-0 rounded-full bg-speakit-green" />}
+        <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+          <span
+            role="button"
+            tabIndex={0}
+            title={muted ? "Unmute channel" : "Mute channel"}
+            onClick={(e) => { e.stopPropagation(); void toggleMute("channel", ch.id); }}
+            className="rounded p-0.5 text-speakit-muted hover:text-white"
+          >
+            {muted ? <BellOff size={13} /> : <Bell size={13} />}
+          </span>
+          {canManage && (
+            <span
+              role="button"
+              tabIndex={0}
+              title="Channel settings"
+              onClick={(e) => { e.stopPropagation(); onOpenChannelSettings(ch.id); }}
+              className="rounded p-0.5 text-speakit-muted hover:text-white"
+            >
+              <Cog size={13} />
+            </span>
+          )}
+          {ch.name !== "general" && canManage && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); void deleteChannel(ch.id); }}
+              className="rounded p-0.5 text-xs text-speakit-muted hover:text-red-400"
+              title={confirmDelete === ch.id ? "Click again to confirm" : "Delete channel"}
+            >
+              {confirmDelete === ch.id ? "sure?" : "✕"}
+            </span>
+          )}
         </span>
-      )}
-    </button>
-  );
+      </button>
+    );
+  };
 
   return (
     <div className="flex w-60 flex-col bg-speakit-sidebar">
       <button
-        onClick={canManage ? onOpenServerSettings : onInvite}
-        title={canManage ? "Server settings" : "Invite friends"}
+        onClick={canOpenSettings ? onOpenServerSettings : onInvite}
+        title={canOpenSettings ? "Server settings" : "Invite friends"}
         className="flex h-12 items-center gap-2 border-b border-black/30 px-3 text-left shadow-sm hover:bg-white/5"
       >
         {serverDetail.iconUrl ? (
@@ -102,7 +140,7 @@ export function ChannelSidebar({
         <button title="Invite" onClick={onInvite} className="rounded p-1 text-speakit-muted hover:text-white">
           <Plus size={16} />
         </button>
-        <span className="ml-auto text-[10px] text-speakit-muted">{canManage ? "Click name for settings" : ""}</span>
+        <span className="ml-auto text-[10px] text-speakit-muted">{canOpenSettings ? "Click name for settings" : ""}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
