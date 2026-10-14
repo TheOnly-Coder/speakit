@@ -7,7 +7,9 @@ import { prisma } from "./src/lib/db";
 import { sanitizeAttachments } from "./src/lib/attachments";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = process.env.HOSTNAME || "0.0.0.0";
+// Always bind all interfaces. Hosts like Render/Docker set HOSTNAME to a
+// container id — binding that makes the app unreachable (HTTP 502).
+const hostname = "0.0.0.0";
 const port = Number(process.env.PORT || 3000);
 
 console.log(`… Speakit booting (port ${port})…`);
