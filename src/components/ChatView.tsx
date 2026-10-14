@@ -123,7 +123,9 @@ export function ChatView({ channelId }: { channelId: string }) {
     const socket = getSocket();
     const onNew = (msg: Record<string, unknown>) => {
       if (String(msg.channelId) !== channelId) return;
-      addMessage(key, toChatMessage({ ...msg, reactions: [] }));
+      const incoming = toChatMessage({ ...msg, reactions: [] });
+      incoming.tempId = undefined; // server echo — never show "sending" on real messages
+      addMessage(key, incoming);
       scrollToBottom();
     };
     const onUpdated = (p: { id: string; channelId: string; content?: string; edited?: boolean; updatedAt?: string; pinned?: boolean }) => {
@@ -224,13 +226,14 @@ export function ChatView({ channelId }: { channelId: string }) {
       (res: unknown) => {
         const r = res as { ok?: boolean; message?: Record<string, unknown>; error?: string };
         if (r?.ok && r.message) {
-          // Replace temp
-          const real = toChatMessage({ ...r.message, tempId });
-          // remove temp + add real (addMessage dedupes by tempId)
-          addMessage(key, real);
-          // remove the optimistic temp entry with id=tempId
-          removeMessage(key, tempId);
-          addMessage(key, { ...real, tempId: undefined });
+          // Swap the optimistic echo for the real message (drops tempId so
+          // "sending…" clears; skips if the live broadcast already added it).
+          const real = toChatMessage(r.message);
+          real.tempId = undefined;
+          const all = useChatStore.getState().messages[key] ?? [];
+          const withoutTemp = all.filter((m) => m.tempId !== tempId && m.id !== tempId);
+          if (!withoutTemp.some((m) => m.id === real.id)) withoutTemp.push(real);
+          setMessages(key, withoutTemp);
         }
       }
     );

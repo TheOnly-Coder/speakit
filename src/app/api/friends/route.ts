@@ -21,8 +21,8 @@ export async function GET() {
   const all = [...sent, ...received];
   const friends = all
     .filter((f) => f.status === "ACCEPTED")
-    .map((f) => (f.requesterId === userId ? f.receiver : f.requester))
-    .map((u) => ({ id: u.id, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor, avatarUrl: u.avatarUrl, status: u.status }));
+    .map((f) => (f.requesterId === userId ? { peer: f.receiver, fr: f } : { peer: f.requester, fr: f }))
+    .map(({ peer: u, fr }) => ({ id: u.id, friendshipId: fr.id, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor, avatarUrl: u.avatarUrl, status: u.status }));
   const pendingIn = received.filter((f) => f.status === "PENDING").map((f) => ({ id: f.id, user: { id: f.requester.id, username: f.requester.username, displayName: f.requester.displayName, avatarColor: f.requester.avatarColor, avatarUrl: f.requester.avatarUrl } }));
   const pendingOut = sent.filter((f) => f.status === "PENDING").map((f) => ({ id: f.id, user: { id: f.receiver.id, username: f.receiver.username, displayName: f.receiver.displayName, avatarColor: f.receiver.avatarColor, avatarUrl: f.receiver.avatarUrl } }));
 

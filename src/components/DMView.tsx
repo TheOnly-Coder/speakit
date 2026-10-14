@@ -11,8 +11,9 @@ import { Avatar } from "./Avatar";
 import { Bell, BellOff } from "lucide-react";
 
 export function DMView({ conversationId }: { conversationId: string }) {
-  const { setMessages, addMessage, setTyping, typing, messages } = useChatStore();
+  const { setMessages, addMessage, updateMessage, removeMessage, setTyping, typing, messages } = useChatStore();
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [other, setOther] = useState<{ id: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string; status: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const key = `dm:${conversationId}`;
@@ -109,14 +110,36 @@ export function DMView({ conversationId }: { conversationId: string }) {
     };
     socket.on("dm:message:new", onNew);
     socket.on("dm:typing:update", onTyping);
+    const onUpdated = (p: { conversationId: string; id: string; content?: string; edited?: boolean; updatedAt?: string }) => {
+      if (p.conversationId !== conversationId) return;
+      const patch: Partial<ChatMessage> = {};
+      if (p.content !== undefined) patch.content = p.content;
+      if (p.edited !== undefined) patch.edited = p.edited;
+      if (p.updatedAt !== undefined) patch.updatedAt = p.updatedAt;
+      updateMessage(key, p.id, patch);
+    };
+    const onDeleted = (p: { conversationId: string; id: string }) => {
+      if (p.conversationId !== conversationId) return;
+      removeMessage(key, p.id);
+    };
+    socket.on("dm:message:updated", onUpdated);
+    socket.on("dm:message:deleted", onDeleted);
     return () => {
       socket.off("dm:message:new", onNew);
       socket.off("dm:typing:update", onTyping);
+      socket.off("dm:message:updated", onUpdated);
+      socket.off("dm:message:deleted", onDeleted);
     };
   }, [conversationId, key, addMessage, setTyping, other?.displayName]);
 
   const handleSend = (content: string, attachments: ChatMessage["attachments"]) => {
-    const clean = content.trim();
+    const clean = content.trim().slice(0, 500);
+    if (editing) {
+      getSocket().emit("dm:message:edit", { messageId: editing.id, content: clean }, () => {});
+      updateMessage(key, editing.id, { content: clean, edited: true });
+      setEditing(null);
+      return;
+    }
     if (!clean && attachments.length === 0) return;
     const tempId = `temp-${Date.now()}`;
     const u = useAuthStore.getState().user;
@@ -140,10 +163,19 @@ export function DMView({ conversationId }: { conversationId: string }) {
       if (r?.ok && r.message) {
         const all = useChatStore.getState().messages[key] ?? [];
         const withoutTemp = all.filter((m) => m.tempId !== tempId && m.id !== tempId);
-        setMessages(key, [...withoutTemp, { id: r.message.id, content: r.message.content, conversationId, edited: r.message.edited, createdAt: r.message.createdAt, author: r.message.author, reactions: [], attachments: r.message.attachments ?? [] }]);
+        if (!withoutTemp.some((m) => m.id === r.message!.id)) {
+          withoutTemp.push({ id: r.message!.id, content: r.message!.content, conversationId, edited: r.message!.edited, createdAt: r.message!.createdAt, author: r.message!.author, reactions: [], attachments: r.message!.attachments ?? [] });
+        }
+        setMessages(key, withoutTemp);
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
       }
     });
+  };
+
+  const handleDelete = (m: ChatMessage) => {
+    if (!confirm("Delete this message?")) return;
+    getSocket().emit("dm:message:delete", { messageId: m.id });
+    removeMessage(key, m.id);
   };
 
   return (
@@ -166,12 +198,12 @@ export function DMView({ conversationId }: { conversationId: string }) {
           </div>
         )}
         {list.map((m) => (
-          <MessageItem key={m.id} msg={m} onReply={() => {}} onEdit={() => {}} onDelete={() => {}} onReact={() => {}} onPin={() => {}} />
+          <MessageItem key={m.id} msg={m} onReply={() => {}} onEdit={setEditing} onDelete={handleDelete} onReact={() => {}} onPin={() => {}} />
         ))}
         <div ref={bottomRef} />
       </div>
       {typingList.length > 0 && <div className="px-4 pb-1 text-xs text-speakit-muted">typing…</div>}
-      <MessageInput placeholder={other ? `Message @${other.username}` : "Message"} replyTo={null} editing={null} onCancelReply={() => {}} onCancelEdit={() => {}} onSend={handleSend} />
+      <MessageInput placeholder={other ? `Message @${other.username}` : "Message"} replyTo={null} editing={editing} onCancelReply={() => {}} onCancelEdit={() => setEditing(null)} onSend={handleSend} />
     </div>
   );
 }

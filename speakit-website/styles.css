@@ -111,4 +111,25 @@ footer { border-top: 1px solid #00000055; padding: 22px 0; }
   .links { display: none; position: absolute; top: 64px; left: 0; right: 0; background: var(--panel); flex-direction: column; padding: 12px 20px 18px; margin: 0; }
   .links.open { display: flex; }
   .burger { display: block; }
+  .hero { padding: 48px 0 40px; }
+  section { padding: 40px 0; }
+}
+
+/* small phones */
+@media (max-width: 560px) {
+  body { overflow-x: hidden; }
+  .hero-copy h1 { font-size: 32px; }
+  .hero-copy p { font-size: 15px; }
+  .btn-lg { width: 100%; text-align: center; }
+  .hero-mock { min-height: 0; font-size: 12px; }
+  .mock-rail { display: none; }
+  .mock-side { width: 108px; padding: 10px 6px; }
+  .mock-server { font-size: 12px; }
+  .mock-msg { padding: 6px 10px; }
+  .mock-msg i { width: 26px; height: 26px; font-size: 10px; }
+  .mock-input { margin: auto 8px 8px; }
+  .invite-box code { font-size: 16px; letter-spacing: .2em; }
+  .v-user { padding: 10px 12px; }
+  h2 { font-size: 24px; }
+  .foot { flex-direction: column; align-items: flex-start; }
 }

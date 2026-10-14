@@ -83,6 +83,7 @@ export type ServerDetail = {
 
 export type FriendUser = {
   id: string;
+  friendshipId: string;
   username: string;
   displayName: string;
   avatarColor: string;

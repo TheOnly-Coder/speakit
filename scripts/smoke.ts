@@ -132,6 +132,15 @@ async function main() {
   const dms = await prisma.directMessage.findMany({ where: { conversationId: convo.id }, orderBy: { createdAt: "asc" }, include: { attachments: true } });
   assert(dms.length === 2 && dms[0].content === "Hey in DMs", "DM thread ok");
   assert(dms[1].attachments.length === 1, "DM attachment ok");
+  await prisma.directMessage.update({ where: { id: dms[0].id }, data: { content: "Hey in DMs!!", edited: true } });
+  const dmEdited = await prisma.directMessage.findUnique({ where: { id: dms[0].id } });
+  assert(dmEdited?.edited === true, "DM edit works");
+  await prisma.directMessage.delete({ where: { id: dms[1].id } });
+  const dmLeft = await prisma.directMessage.count({ where: { conversationId: convo.id } });
+  assert(dmLeft === 1, "DM delete works");
+  await prisma.friendship.delete({ where: { id: fr.id } });
+  const frGone = await prisma.friendship.findUnique({ where: { id: fr.id } });
+  assert(frGone === null, "friend remove works");
 
   console.log("7) profile customization");
   const customized = await prisma.user.update({

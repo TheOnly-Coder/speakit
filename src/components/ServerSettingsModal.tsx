@@ -352,6 +352,7 @@ function RolesTab({ refresh }: { refresh: () => Promise<void> }) {
 
 function RoleEditor({ role, refresh }: { role: RoleItem; refresh: () => Promise<void> }) {
   const { serverDetail } = useAppStore();
+  const { user: me } = useAuthStore();
   const [name, setName] = useState(role.name);
   const [color, setColor] = useState(role.color);
   const [perms, setPerms] = useState<string[]>(role.permissions);
@@ -382,7 +383,9 @@ function RoleEditor({ role, refresh }: { role: RoleItem; refresh: () => Promise<
   const [assignMsg, setAssignMsg] = useState("");
   const [assignTo, setAssignTo] = useState("");
   const holders = (serverDetail.members ?? []).filter((m) => m.roleIds.includes(role.id));
-  const nonHolders = (serverDetail.members ?? []).filter((m) => !m.roleIds.includes(role.id) && m.role !== "owner");
+  const nonHolders = (serverDetail.members ?? []).filter(
+    (m) => !m.roleIds.includes(role.id) && (m.role !== "owner" || m.id === me?.id)
+  );
 
   const setRole = async (targetUserId: string, action: "add" | "remove") => {
     setAssignMsg("");
@@ -598,7 +601,7 @@ function MembersTab({ refresh }: { refresh: () => Promise<void> }) {
                 ))}
               </div>
             )}
-            {m.id !== user?.id && m.role !== "owner" && canRoles && serverDetail.roles.length > 0 && (
+            {(m.id === user?.id || m.role !== "owner") && canRoles && serverDetail.roles.length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1 pl-9">
                 {serverDetail.roles.map((r) => {
                   const has = m.roleIds.includes(r.id);

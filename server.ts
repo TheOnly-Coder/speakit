@@ -519,6 +519,46 @@ void app.prepare().then(() => {
       socket.to(`dm:${conversationId}`).emit("dm:typing:update", { conversationId, userId, typing: !!typing });
     });
 
+    socket.on("dm:message:edit", async ({ messageId, content }: { messageId: string; content: string }, ack?: (res: unknown) => void) => {
+      try {
+        const msg = await prisma.directMessage.findUnique({ where: { id: messageId }, include: { conversation: true } });
+        if (!msg) return ack?.({ error: "Not found" });
+        if (msg.authorId !== userId) return ack?.({ error: "Only author can edit" });
+        if (msg.conversation.participantAId !== userId && msg.conversation.participantBId !== userId) {
+          return ack?.({ error: "Forbidden" });
+        }
+        const clean = String(content ?? "").trim().slice(0, 500);
+        if (!clean) return ack?.({ error: "Message cannot be empty" });
+        const updated = await prisma.directMessage.update({ where: { id: msg.id }, data: { content: clean, edited: true } });
+        io.to(`dm:${msg.conversationId}`).emit("dm:message:updated", {
+          id: updated.id,
+          conversationId: updated.conversationId,
+          content: updated.content,
+          edited: true,
+          updatedAt: updated.updatedAt,
+        });
+        ack?.({ ok: true });
+      } catch (e) {
+        ack?.({ error: "Failed to edit" });
+      }
+    });
+
+    socket.on("dm:message:delete", async ({ messageId }: { messageId: string }, ack?: (res: unknown) => void) => {
+      try {
+        const msg = await prisma.directMessage.findUnique({ where: { id: messageId }, include: { conversation: true } });
+        if (!msg) return ack?.({ error: "Not found" });
+        if (msg.authorId !== userId) return ack?.({ error: "Cannot delete" });
+        if (msg.conversation.participantAId !== userId && msg.conversation.participantBId !== userId) {
+          return ack?.({ error: "Forbidden" });
+        }
+        await prisma.directMessage.delete({ where: { id: msg.id } });
+        io.to(`dm:${msg.conversationId}`).emit("dm:message:deleted", { id: msg.id, conversationId: msg.conversationId });
+        ack?.({ ok: true });
+      } catch (e) {
+        ack?.({ error: "Failed to delete" });
+      }
+    });
+
     // ---------- Voice ----------
     socket.on("voice:join", async ({ channelId }: { channelId: string }, ack?: (res: unknown) => void) => {
       try {

@@ -42,13 +42,22 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
             <div className="px-2 py-1 text-[11px] font-bold uppercase text-speakit-muted">Friends — {friends.length}</div>
             {friends.length === 0 && <div className="px-2 text-xs text-speakit-muted">No friends yet. Add someone!</div>}
             {friends.map((f) => (
-              <button key={f.id} onClick={() => useProfileStore.getState().openProfile(f.id)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5">
-                <Avatar name={f.displayName} color={f.avatarColor} src={f.avatarUrl || undefined} size={32} status={f.status} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-white">{f.displayName}</div>
-                  <div className="truncate text-[11px] text-speakit-muted">@{f.username}</div>
-                </div>
-              </button>
+              <div key={f.id} className="group flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5">
+                <button onClick={() => useProfileStore.getState().openProfile(f.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                  <Avatar name={f.displayName} color={f.avatarColor} src={f.avatarUrl || undefined} size={32} status={f.status} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-white">{f.displayName}</div>
+                    <div className="truncate text-[11px] text-speakit-muted">@{f.username}</div>
+                  </div>
+                </button>
+                <button
+                  title="Remove friend"
+                  onClick={() => void removeFriend(f)}
+                  className="hidden rounded p-1 text-speakit-muted hover:text-red-400 group-hover:block"
+                >
+                  ✕
+                </button>
+              </div>
             ))}
             <div className="px-2 py-1 pt-3 text-[11px] font-bold uppercase text-speakit-muted">Direct Messages</div>
             {conversations.map((c) => {
@@ -70,13 +79,22 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
                     </div>
                     {pings > 0 && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">@{pings}</span>}
                   </button>
-                  <button
-                    title={muted ? "Unmute DMs" : "Mute DMs"}
-                    onClick={() => void toggleMute("dm", c.id)}
-                    className="hidden rounded p-1 text-speakit-muted hover:text-white group-hover:block"
-                  >
-                    {muted ? <BellOff size={13} /> : <Bell size={13} />}
-                  </button>
+                  <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+                    <button
+                      title={muted ? "Unmute DMs" : "Mute DMs"}
+                      onClick={() => void toggleMute("dm", c.id)}
+                      className="rounded p-1 text-speakit-muted hover:text-white"
+                    >
+                      {muted ? <BellOff size={13} /> : <Bell size={13} />}
+                    </button>
+                    <button
+                      title="Close conversation"
+                      onClick={() => void closeDM(c.id)}
+                      className="rounded p-1 text-xs text-speakit-muted hover:text-red-400"
+                    >
+                      ✕
+                    </button>
+                  </span>
                 </div>
               );
             })}
@@ -108,6 +126,31 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
       </div>
     </div>
   );
+}
+
+async function pingFriendUpdate(otherUserId: string) {
+  try {
+    const { getSocket } = await import("@/lib/socket");
+    getSocket().emit("friend:refresh", { userIds: [otherUserId] });
+  } catch {
+    /* ignore */
+  }
+}
+
+async function removeFriend(f: { id: string; friendshipId: string; displayName: string }) {
+  if (!confirm(`Remove ${f.displayName} as a friend?`)) return;
+  await fetch(`/api/friends/${f.friendshipId}`, { method: "DELETE" });
+  await pingFriendUpdate(f.id);
+  await useAppStore.getState().refreshFriends();
+  await useAppStore.getState().refreshDMs();
+}
+
+async function closeDM(conversationId: string) {
+  if (!confirm("Close this conversation? (Messages are deleted)")) return;
+  await fetch(`/api/dms/${conversationId}`, { method: "DELETE" });
+  const st = useAppStore.getState();
+  if (st.activeDMId === conversationId) st.setActiveDM(null);
+  await st.refreshDMs();
 }
 
 function PendingRow({ id, username, displayName, color, avatarUrl, incoming }: { id: string; username: string; displayName: string; color: string; avatarUrl?: string; incoming: boolean }) {

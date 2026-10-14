@@ -17,7 +17,10 @@ export async function POST(req: Request, { params }: { params: { serverId: strin
     where: { userId: params.memberId, serverId: params.serverId },
   });
   if (!member) return NextResponse.json({ error: "Member not found" }, { status: 404 });
-  if (member.role === "owner") return NextResponse.json({ error: "Cannot change the owner's roles" }, { status: 400 });
+  // Owners hold every permission implicitly; only they may touch their own roles.
+  if (member.role === "owner" && params.memberId !== userId) {
+    return NextResponse.json({ error: "Cannot change the owner's roles" }, { status: 400 });
+  }
 
   const body = await req.json();
   const parsed = bodySchema.safeParse(body);

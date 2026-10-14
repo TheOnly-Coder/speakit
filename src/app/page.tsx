@@ -398,25 +398,57 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
         )}
         <div className="mb-6 space-y-1">
           {conversations.map((c) => (
-            <button key={c.id} onClick={() => onOpenDM(c.id)} className="flex w-full items-center gap-3 rounded-lg bg-[#2b2d31] px-3 py-2.5 text-left hover:bg-[#35373c]">
-              <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={36} status={c.other.status} />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-white">{c.other.displayName}</div>
-                <div className="truncate text-xs text-speakit-muted">{c.lastMessage || "No messages yet"}</div>
-              </div>
-            </button>
+            <div key={c.id} className="group flex w-full items-center gap-3 rounded-lg bg-[#2b2d31] px-3 py-2.5 text-left hover:bg-[#35373c]">
+              <button onClick={() => onOpenDM(c.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={36} status={c.other.status} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-white">{c.other.displayName}</div>
+                  <div className="truncate text-xs text-speakit-muted">{c.lastMessage || "No messages yet"}</div>
+                </div>
+              </button>
+              <button
+                title="Close conversation"
+                onClick={async () => {
+                  if (!confirm("Close this conversation? (Messages are deleted)")) return;
+                  await fetch(`/api/dms/${c.id}`, { method: "DELETE" });
+                  await useAppStore.getState().refreshDMs();
+                }}
+                className="hidden rounded p-1 text-xs text-speakit-muted hover:text-red-400 group-hover:block"
+              >
+                ✕
+              </button>
+            </div>
           ))}
         </div>
 
         <h3 className="mb-2 text-xs font-bold uppercase text-speakit-muted">All friends ({friends.length})</h3>
         <div className="space-y-1">
           {friends.map((f) => (
-            <div key={f.id} className="flex items-center gap-3 rounded-lg bg-[#2b2d31] px-3 py-2.5">
+            <div key={f.id} className="group flex items-center gap-3 rounded-lg bg-[#2b2d31] px-3 py-2.5">
               <Avatar name={f.displayName} color={f.avatarColor} src={f.avatarUrl || undefined} size={36} status={f.status} />
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-white">{f.displayName}</div>
                 <div className="text-xs text-speakit-muted">@{f.username}</div>
               </div>
+              <button
+                title="Remove friend"
+                onClick={async () => {
+                  if (!confirm(`Remove ${f.displayName} as a friend?`)) return;
+                  const res = await fetch(`/api/friends/${f.friendshipId}`, { method: "DELETE" });
+                  const data = await res.json().catch(() => ({}));
+                  try {
+                    const { getSocket } = await import("@/lib/socket");
+                    if (data.otherUserId) getSocket().emit("friend:refresh", { userIds: [data.otherUserId] });
+                  } catch {
+                    /* ignore */
+                  }
+                  await useAppStore.getState().refreshFriends();
+                  await useAppStore.getState().refreshDMs();
+                }}
+                className="hidden rounded px-2 py-1 text-[11px] text-speakit-muted hover:text-red-400 group-hover:block"
+              >
+                Remove
+              </button>
             </div>
           ))}
           {friends.length === 0 && <div className="rounded-lg bg-[#2b2d31] p-4 text-sm text-speakit-muted">You haven&apos;t added friends yet.</div>}
