@@ -11,6 +11,7 @@ import { useLocalAppearance } from "@/store/useLocalAppearance";
 import { getSocket, disconnectSocket, setSocketToken } from "@/lib/socket";
 import { createClient as createSupabaseBrowser } from "@/lib/supabase";
 import { VoiceBridge } from "@/hooks/useVoice";
+import { useAutoIdle } from "@/hooks/useAutoIdle";
 import { ServerRail } from "@/components/ServerRail";
 import { ChannelSidebar } from "@/components/ChannelSidebar";
 import { DMSidebar } from "@/components/DMSidebar";
@@ -80,6 +81,9 @@ export default function HomePage() {
   const [mobileNav, setMobileNav] = useState(false);
   const [socketStatus, setSocketStatus] = useState("connecting");
   const { theme, toggle: toggleTheme, apply: applyTheme } = useThemeStore();
+
+  // Discord-style auto-away: idle after 5 min with the tab open, restore on return.
+  useAutoIdle();
 
   useEffect(() => {
     applyTheme();

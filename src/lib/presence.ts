@@ -15,6 +15,35 @@
 
 const liveSockets = new Map<string, Set<string>>(); // userId -> socketIds
 
+/**
+ * Ephemeral auto-away overlay (Discord-like idle).
+ *
+ * - Set when a client reports no input for IDLE_TIMEOUT_MS with the tab open.
+ * - NEVER persisted to the DB: the stored status (online/dnd/…) stays intact,
+ *   so coming back (or reconnecting) restores exactly what was there before.
+ * - Only overlays `online` → `idle`. DND / invisible / manual-idle are kept.
+ * - Cleared on manual status change, on fresh connect, and on full disconnect
+ *   (offline takes precedence over idle).
+ */
+const autoIdleUsers = new Set<string>(); // userId
+
+/** Mark a live user as auto-away. */
+export function markAutoIdle(userId: string): void {
+  autoIdleUsers.add(userId);
+}
+
+/** Clear the auto-away flag. Returns true if the user was auto-idle. */
+export function clearAutoIdle(userId: string): boolean {
+  if (!autoIdleUsers.has(userId)) return false;
+  autoIdleUsers.delete(userId);
+  return true;
+}
+
+/** Whether the user is currently auto-away. */
+export function isAutoIdle(userId: string): boolean {
+  return autoIdleUsers.has(userId);
+}
+
 /** Register a socket. Returns true if this is the user's first live socket. */
 export function presenceOnline(userId: string, socketId: string): boolean {
   let set = liveSockets.get(userId);
@@ -56,6 +85,9 @@ export function isLive(userId: string): boolean {
 export function visibleStatus(stored: string, userId: string): string {
   if (stored === "invisible") return "offline";
   if (!isLive(userId)) return "offline";
+  // Auto-away only ever overlays `online` — DND / manual-idle stay as set,
+  // and the stored value is untouched so return restores it exactly.
+  if (stored === "online" && isAutoIdle(userId)) return "idle";
   if (stored === "online" || stored === "idle" || stored === "dnd") return stored;
   return "online";
 }

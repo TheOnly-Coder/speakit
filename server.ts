@@ -6,7 +6,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { prisma } from "./src/lib/db";
 import { sanitizeAttachments } from "./src/lib/attachments";
 import { canInChannel } from "./src/lib/channelPerms";
-import { presenceOnline, presenceOffline, presenceSockets, visibleStatus } from "./src/lib/presence";
+import { presenceOnline, presenceOffline, presenceSockets, visibleStatus, markAutoIdle, clearAutoIdle, isAutoIdle } from "./src/lib/presence";
 import { handleBotTriggers } from "./src/lib/bots/executor";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -170,7 +170,11 @@ void app.prepare().then(() => {
     // Broadcast our *stored* status (idle/dnd respected, invisible reads as
     // offline) — but only when our first socket connects, so a second tab
     // doesn't replay presence to everyone.
+    // A (re)connect means the tab is open and reachable again: drop any stale
+    // auto-away flag so everyone sees the stored status (online/dnd/…) —
+    // never stuck on idle/offline after coming back.
     if (firstSocket) {
+      clearAutoIdle(userId);
       void (async () => {
         try {
           const me = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
@@ -227,6 +231,8 @@ void app.prepare().then(() => {
         if (!["online", "idle", "dnd", "invisible"].includes(status)) {
           return ack?.({ error: "Invalid status" });
         }
+        // A manual pick always wins over auto-away.
+        clearAutoIdle(userId);
         await prisma.user.update({ where: { id: userId }, data: { status } });
         const visible = visibleStatus(status, userId);
         const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
@@ -236,6 +242,39 @@ void app.prepare().then(() => {
         ack?.({ ok: true, status: visible });
       } catch {
         ack?.({ error: "Failed to set status" });
+      }
+    });
+
+    // Ephemeral auto-away (client reports no input with the tab still open).
+    // Only overlays `online` → `idle`; the DB status is never touched so the
+    // previous status is restored exactly on activity/reconnect.
+    socket.on("presence:idle", async () => {
+      try {
+        const me = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+        if ((me?.status ?? "online") !== "online") return;
+        if (isAutoIdle(userId)) return;
+        markAutoIdle(userId);
+        const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
+        for (const m of memberships) {
+          io.to(`server:${m.serverId}`).emit("presence:updated", { userId, status: "idle" });
+        }
+      } catch {
+        /* ignore */
+      }
+    });
+
+    // Back from idle: clear the overlay and re-broadcast the stored status.
+    socket.on("presence:active", async () => {
+      try {
+        if (!clearAutoIdle(userId)) return;
+        const me = await prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
+        const status = visibleStatus(me?.status ?? "online", userId);
+        const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
+        for (const m of memberships) {
+          io.to(`server:${m.serverId}`).emit("presence:updated", { userId, status });
+        }
+      } catch {
+        /* ignore */
       }
     });
 
@@ -741,6 +780,9 @@ void app.prepare().then(() => {
       // + desktop keeps you online). Everyone then sees "offline" automatically.
       const wentOffline = presenceOffline(userId, socket.id);
       if (wentOffline) {
+        // Offline wins over idle; a later reconnect re-broadcasts the stored
+        // status so nobody stays stuck on idle/offline.
+        clearAutoIdle(userId);
         try {
           const memberships = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
           for (const m of memberships) {
