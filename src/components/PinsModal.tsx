@@ -1,10 +1,14 @@
 "use client";
 
 import { Pin } from "lucide-react";
+import { useCallback } from "react";
 import { Modal } from "./ui";
 import { Avatar } from "./Avatar";
 import { formatTime } from "@/lib/utils";
 import { previewForMessage, shouldShowBody } from "@/lib/messagePreview";
+import { MarkdownContent } from "@/lib/discordMarkdown";
+import { emojiUrlFor } from "@/lib/emoji";
+import { useAppStore } from "@/store/useAppStore";
 
 export type PinItem = {
   id: string;
@@ -29,6 +33,17 @@ export function PinsModal({
   onJump: (messageId: string) => void;
   onUnpin: (messageId: string) => void;
 }) {
+  const { serverDetail, myEmojis } = useAppStore();
+  const resolveEmoji = useCallback(
+    (name: string) =>
+      emojiUrlFor(
+        name,
+        serverDetail?.id,
+        serverDetail ? { [serverDetail.id]: serverDetail.customEmojis } : {},
+        myEmojis
+      ),
+    [serverDetail, myEmojis]
+  );
   return (
     <Modal open={open} onClose={onClose} title={`Pinned in #${channelName}`}>
       {pins.length === 0 && <div className="py-4 text-center text-sm text-speakit-muted">No pinned messages yet.</div>}
@@ -45,7 +60,9 @@ export function PinsModal({
               </span>
             </div>
             {shouldShowBody(p.content) ? (
-              <div className="whitespace-pre-wrap break-words text-sm">{p.content}</div>
+              <div className="break-words text-sm">
+                <MarkdownContent text={p.content} resolveEmoji={resolveEmoji} />
+              </div>
             ) : p.attachments.length > 0 ? (
               <div className="text-sm italic text-speakit-muted">{previewForMessage(p.content, p.attachments)}</div>
             ) : null}

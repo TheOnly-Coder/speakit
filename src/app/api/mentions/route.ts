@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
+import { stripDiscordMarkdown } from "@/lib/messagePreview";
 import { z } from "zod";
 
 export async function GET() {
@@ -88,7 +89,7 @@ async function mentionItems(userId: string, rows: MentionRow[]) {
           serverId: m.channel.server.id,
           serverName: m.channel.server.name,
           authorName: m.author.displayName,
-          preview: m.content.slice(0, 120),
+          preview: stripDiscordMarkdown(m.content).slice(0, 120),
           createdAt: row.createdAt,
         });
       } else if (row.directMessageId) {
@@ -101,7 +102,7 @@ async function mentionItems(userId: string, rows: MentionRow[]) {
           conversationId: m.conversation.id,
           dmName: other.displayName,
           authorName: m.author.displayName,
-          preview: m.content.slice(0, 120),
+          preview: stripDiscordMarkdown(m.content).slice(0, 120),
           createdAt: row.createdAt,
         });
       }

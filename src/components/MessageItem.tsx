@@ -1,11 +1,12 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Reply, Pencil, Trash2, Smile, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
 import { Avatar, BotTag } from "./Avatar";
-import { splitShortcodes, emojiUrlFor } from "@/lib/emoji";
+import { emojiUrlFor } from "@/lib/emoji";
+import { MarkdownContent } from "@/lib/discordMarkdown";
 import { previewForMessage, shouldShowBody } from "@/lib/messagePreview";
 import type { ServerEmoji } from "@/store/useAppStore";
 import type { ChatMessage } from "@/store/useChatStore";
@@ -50,7 +51,10 @@ export const MessageItem = memo(function MessageItem({
     return map;
   }, [serverDetail]);
 
-  const parts = useMemo(() => splitShortcodes(msg.content), [msg.content]);
+  const resolveEmoji = useCallback(
+    (name: string) => emojiUrlFor(name, channelServerId, byServer, myEmojis),
+    [channelServerId, byServer, myEmojis]
+  );
   const showBody = shouldShowBody(msg.content);
   // Role-colored username (matches the member list): look the author up in
   // this server's members. DMs / other servers fall back to white.
@@ -106,14 +110,8 @@ export const MessageItem = memo(function MessageItem({
           {msg.tempId && <span className="text-[10px] text-speakit-muted">sending…</span>}
         </div>
         {showBody && (
-          <div className="whitespace-pre-wrap break-words text-[15px] text-speakit-text">
-            {parts.map((p, i) =>
-              "text" in p ? (
-                <span key={i}>{p.text}</span>
-              ) : (
-                <CustomGlyph key={i} name={p.emoji} url={emojiUrlFor(p.emoji, channelServerId, byServer, myEmojis)} />
-              )
-            )}
+          <div className="break-words text-[15px] text-speakit-text">
+            <MarkdownContent text={msg.content} resolveEmoji={resolveEmoji} />
           </div>
         )}
         {msg.attachments.length > 0 && (
@@ -172,8 +170,3 @@ export const MessageItem = memo(function MessageItem({
     </div>
   );
 });
-
-function CustomGlyph({ name, url }: { name: string; url: string | null }) {
-  if (!url) return <span>:{name}:</span>;
-  return <img src={url} alt={`:${name}:`} title={`:${name}:`} className="inline h-6 w-6 object-contain align-[-4px]" loading="lazy" />;
-}
