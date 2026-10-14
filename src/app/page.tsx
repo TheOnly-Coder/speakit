@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { LogOut, MessageCircle, UserPlus, Plus, Sun, Moon, Bell, BellOff, Menu, Search, X } from "lucide-react";
+import { LogOut, MessageCircle, UserPlus, Plus, Sun, Moon, Bell, BellOff, Menu, Search } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
 import { useThemeStore } from "@/store/useThemeStore";
@@ -92,6 +92,13 @@ export default function HomePage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // Close the mobile drawer once navigation actually happens (selecting a
+  // server/channel/DM), instead of closing on any tap inside the drawer —
+  // the latter broke dropdowns and menus on touch devices.
+  useEffect(() => {
+    setMobileNav(false);
+  }, [activeChannelId, activeDMId, view]);
 
   useEffect(() => {
     void fetchMe();
@@ -309,7 +316,7 @@ export default function HomePage() {
   );
 
   return (
-    <div className="speakit-shell-in flex h-screen overflow-hidden bg-speakit-bg">
+    <div className="speakit-shell-in flex h-dvh overflow-hidden bg-speakit-bg">
       <VoiceBridge />
       <ContextMenuHost />
       {/* Desktop rail */}
@@ -331,7 +338,7 @@ export default function HomePage() {
       {mobileNav && (
         <div className="fixed inset-0 z-[70] flex sm:hidden">
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileNav(false)} />
-          <div className="relative flex max-w-[85vw] overflow-hidden rounded-r-2xl">
+          <div className="relative flex max-w-[92vw] shrink-0 overflow-hidden rounded-r-2xl">
             <ServerRail
               onAdd={() => { setMobileNav(false); setShowCreate(true); }}
               onJoin={() => { setMobileNav(false); setShowJoin(true); }}
@@ -342,9 +349,7 @@ export default function HomePage() {
                 setView("home");
               }}
             />
-            <div onClick={() => setMobileNav(false)} className="flex">
-              {sidebar}
-            </div>
+            {sidebar}
           </div>
         </div>
       )}
@@ -383,13 +388,10 @@ export default function HomePage() {
             <button onClick={() => void handleLogout()} className="hidden items-center gap-1 hover:text-white sm:flex" title="Log out">
               <LogOut size={12} /> @{user.username}
             </button>
-            <button onClick={() => setMobileNav((v) => !v)} className="rounded p-1 hover:text-white sm:hidden" title="Menu">
-              {mobileNav ? <X size={14} /> : <Menu size={14} />}
-            </button>
           </span>
         </div>
 
-        <div className="flex min-h-0 flex-1" onClick={() => setMobileNav(false)}>
+        <div className="flex min-h-0 flex-1">
           {view === "server" ? (
             activeChannelId ? (
               <ChatView key={activeChannelId} channelId={activeChannelId} />

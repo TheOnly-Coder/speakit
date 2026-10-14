@@ -140,7 +140,7 @@ export function MessageInput({
   const external = myEmojis.filter((e) => !currentEmojis.some((c) => c.name === e.name));
 
   return (
-    <div className="relative px-4 pb-4">
+    <div className="relative px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-4">
       {replyTo && (
         <div className="mb-1 flex items-center justify-between rounded-t-lg bg-[#2b2d31] px-3 py-1.5 text-xs text-speakit-muted">
           <span>Replying to <b className="text-white">{replyTo.author.displayName}</b>: {previewForMessage(replyTo.content, replyTo.attachments).slice(0, 80) || "attachment"}</span>

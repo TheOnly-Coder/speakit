@@ -181,10 +181,10 @@ export function DMView({ conversationId }: { conversationId: string }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-speakit-bg">
-      <div className="flex h-12 items-center gap-2 border-b border-black/30 px-4">
+      <div className="flex h-12 min-w-0 items-center gap-2 border-b border-black/30 px-3 sm:px-4">
         {other && <Avatar name={other.displayName} color={other.avatarColor} src={other.avatarUrl || undefined} size={28} status={other.status} />}
-        <span className="font-bold text-white">{other ? other.displayName : "Direct Message"}</span>
-        {other && <span className="text-xs text-speakit-muted">@{other.username}</span>}
+        <span className="truncate font-bold text-white">{other ? other.displayName : "Direct Message"}</span>
+        {other && <span className="hidden truncate text-xs text-speakit-muted sm:block">@{other.username}</span>}
         <div className="flex-1" />
         <button onClick={() => void toggleMute("dm", conversationId)} title={muted ? "Unmute DMs" : "Mute DMs"} className="rounded p-1.5 text-speakit-muted hover:text-white">
           {muted ? <BellOff size={16} /> : <Bell size={16} />}

@@ -66,7 +66,7 @@ export const MessageItem = memo(function MessageItem({
   return (
     <div
       id={`msg-${msg.id}`}
-      className={`group relative flex scroll-mt-16 gap-3 px-4 hover:bg-black/20 ${compact ? "py-0.5" : "py-1.5"}`}
+      className={`group relative flex scroll-mt-16 gap-2 px-3 py-1.5 hover:bg-black/20 sm:gap-3 sm:px-4 ${compact ? "py-0.5" : "py-1.5"}`}
       {...ctxProps(() => [
         { type: "item" as const, label: "Reply", onClick: () => onReply(msg) },
         { type: "item" as const, label: msg.pinned ? "Unpin Message" : "Pin Message", onClick: () => onPin(msg) },
@@ -88,15 +88,15 @@ export const MessageItem = memo(function MessageItem({
             <span className="truncate opacity-80">{replyPreview || <i>attachment</i>}</span>
           </div>
         )}
-        <div className="flex items-baseline gap-2">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           <button
             onClick={() => openProfile(msg.author.id)}
-            className="text-sm font-semibold text-white hover:underline"
+            className="min-w-0 max-w-full truncate text-sm font-semibold text-white hover:underline"
             style={authorColor ? { color: authorColor } : undefined}
           >
             {msg.author.displayName}
           </button>
-          <span className="text-[11px] text-speakit-muted">@{msg.author.username}{showTimestamps ? ` • ${formatTime(msg.createdAt)}` : ""}</span>
+          <span className="shrink-0 text-[11px] text-speakit-muted">@{msg.author.username}{showTimestamps ? ` • ${formatTime(msg.createdAt)}` : ""}</span>
           {msg.edited && <span className="text-[10px] text-speakit-muted">(edited)</span>}
           {msg.pinned && <span title="Pinned" className="text-[10px] text-yellow-400">📌</span>}
           {msg.tempId && <span className="text-[10px] text-speakit-muted">sending…</span>}

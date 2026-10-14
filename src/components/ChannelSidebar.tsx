@@ -33,7 +33,7 @@ export function ChannelSidebar({
   const { openProfile } = useProfileStore();
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  if (!serverDetail) return <div className="w-60 bg-speakit-sidebar" />;
+  if (!serverDetail) return <div className="w-60 max-w-[calc(92vw-4.5rem)] bg-speakit-sidebar" />;
 
   const myPerms = myServerPerms(serverDetail, user?.id);
   const canManage = myPerms.has("manageChannels");
@@ -136,7 +136,7 @@ export function ChannelSidebar({
   };
 
   return (
-    <div className="flex w-60 flex-col bg-speakit-sidebar">
+    <div className="flex w-60 max-w-[calc(92vw-4.5rem)] shrink-0 flex-col bg-speakit-sidebar">
       <ServerMenu
         onInvite={onInvite}
         onOpenServerSettings={onOpenServerSettings}

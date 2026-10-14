@@ -22,6 +22,12 @@ type VoiceState = {
   screenStreams: Record<string, MediaStream>;
   selfScreen: MediaStream | null;
   connectedAt: number | null;
+  /** Last join failure, shown in the voice UI so users know what happened. */
+  joinError: string | null;
+  /** True when we joined listen-only because the mic was blocked/unavailable. */
+  micBlocked: boolean;
+  /** Per-peer WebRTC connection state (connecting/connected/failed). */
+  peerConn: Record<string, string>;
   setChannel: (channelId: string | null, serverId: string | null) => void;
   setPeers: (peers: VoicePeer[]) => void;
   upsertPeer: (peer: VoicePeer) => void;
@@ -34,6 +40,9 @@ type VoiceState = {
   setScreenStream: (userId: string, stream: MediaStream | null) => void;
   setSelfScreen: (stream: MediaStream | null) => void;
   setConnectedAt: (v: number | null) => void;
+  setJoinError: (v: string | null) => void;
+  setMicBlocked: (v: boolean) => void;
+  setPeerConn: (userId: string, state: string | null) => void;
   reset: () => void;
 };
 
@@ -48,6 +57,9 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   screenStreams: {},
   selfScreen: null,
   connectedAt: null,
+  joinError: null,
+  micBlocked: false,
+  peerConn: {},
   setChannel: (channelId, serverId) => set({ channelId, serverId }),
   setPeers: (peers) => set({ peers }),
   upsertPeer: (peer) =>
@@ -56,7 +68,12 @@ export const useVoiceStore = create<VoiceState>((set) => ({
       if (!exists) return { peers: [...s.peers, peer] };
       return { peers: s.peers.map((p) => (p.userId === peer.userId ? { ...p, ...peer } : p)) };
     }),
-  removePeer: (userId) => set((s) => ({ peers: s.peers.filter((p) => p.userId !== userId) })),
+  removePeer: (userId) =>
+    set((s) => {
+      const peerConn = { ...s.peerConn };
+      delete peerConn[userId];
+      return { peers: s.peers.filter((p) => p.userId !== userId), peerConn };
+    }),
   updatePeerState: (userId, patch) =>
     set((s) => ({ peers: s.peers.map((p) => (p.userId === userId ? { ...p, ...patch } : p)) })),
   setSelfMuted: (v) => set({ selfMuted: v }),
@@ -72,5 +89,14 @@ export const useVoiceStore = create<VoiceState>((set) => ({
     }),
   setSelfScreen: (stream) => set({ selfScreen: stream }),
   setConnectedAt: (v) => set({ connectedAt: v }),
-  reset: () => set({ channelId: null, serverId: null, peers: [], selfMuted: false, selfDeafened: false, joining: false, sharingSelf: false, screenStreams: {}, selfScreen: null, connectedAt: null }),
+  setJoinError: (v) => set({ joinError: v }),
+  setMicBlocked: (v) => set({ micBlocked: v }),
+  setPeerConn: (userId, state) =>
+    set((s) => {
+      const peerConn = { ...s.peerConn };
+      if (state) peerConn[userId] = state;
+      else delete peerConn[userId];
+      return { peerConn };
+    }),
+  reset: () => set({ channelId: null, serverId: null, peers: [], selfMuted: false, selfDeafened: false, joining: false, sharingSelf: false, screenStreams: {}, selfScreen: null, connectedAt: null, joinError: null, micBlocked: false, peerConn: {} }),
 }));

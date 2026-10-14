@@ -15,7 +15,7 @@ export function DMSidebar({ onAddFriend, onOpenSettings }: { onAddFriend: () => 
   const [tab, setTab] = useState<"all" | "pending">("all");
 
   return (
-    <div className="flex w-60 flex-col bg-speakit-sidebar">
+    <div className="flex w-60 max-w-[calc(92vw-4.5rem)] shrink-0 flex-col bg-speakit-sidebar">
       <div className="flex h-12 items-center border-b border-black/30 px-4">
         <span className="text-sm font-bold text-white">Speakit Home</span>
       </div>

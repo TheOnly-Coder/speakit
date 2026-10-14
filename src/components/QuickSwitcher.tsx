@@ -98,7 +98,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-start justify-center px-4 pt-[12vh]">
+    <div className="fixed inset-0 z-[80] flex items-start justify-center px-4 pt-[12dvh]">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
       <div className="relative w-full max-w-lg overflow-hidden rounded-xl bg-[#1e1f22] shadow-2xl ring-1 ring-white/10">
         <div className="flex items-center gap-2 border-b border-black/30 px-4 py-3">

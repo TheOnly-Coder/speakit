@@ -1,7 +1,7 @@
 /** Instant paint skeleton while the authenticated app shell loads. */
 export default function Loading() {
   return (
-    <div className="speakit-shell-in flex h-screen overflow-hidden bg-speakit-bg">
+    <div className="speakit-shell-in flex h-dvh overflow-hidden bg-speakit-bg">
       <div className="flex w-[72px] flex-col items-center gap-2 bg-speakit-rail py-3">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="h-12 w-12 animate-pulse rounded-full bg-white/10" />

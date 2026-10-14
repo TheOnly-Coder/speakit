@@ -10,7 +10,7 @@ import { MessageInput } from "./MessageInput";
 import { PinsModal, PinCount, type PinItem } from "./PinsModal";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useVoiceStore } from "@/store/useVoiceStore";
-import { voiceActions } from "@/hooks/useVoice";
+import { voiceActions, canShareScreen, hasTurnConfigured } from "@/hooks/useVoice";
 import { Avatar } from "./Avatar";
 import { MemberList } from "./MemberList";
 
@@ -293,10 +293,10 @@ export function ChatView({ channelId }: { channelId: string }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-speakit-bg">
-      <div className="flex h-12 items-center gap-2 border-b border-black/30 px-4 shadow-sm">
-        <Hash size={18} className="text-speakit-muted" />
-        <span className="font-bold text-white">{channel.name}</span>
-        {channel.topic && <span className="truncate text-xs text-speakit-muted">| {channel.topic}</span>}
+      <div className="flex h-12 min-w-0 items-center gap-2 border-b border-black/30 px-3 shadow-sm sm:px-4">
+        <Hash size={18} className="shrink-0 text-speakit-muted" />
+        <span className="truncate font-bold text-white">{channel.name}</span>
+        {channel.topic && <span className="hidden truncate text-xs text-speakit-muted md:block">| {channel.topic}</span>}
         <div className="flex-1" />
         <PinCount count={list.filter((m) => m.pinned).length} onClick={() => void openPins()} />
         <button onClick={() => setShowMembers(!showMembers)} className="rounded p-1.5 text-speakit-muted hover:text-white" title="Toggle members">
@@ -364,16 +364,35 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
   const voice = useVoiceStore();
   const [joiningLocal, setJoiningLocal] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [retryingPeer, setRetryingPeer] = useState<string | null>(null);
   const isConnectedHere = voice.channelId === channelId;
   const connectedElsewhere = !!voice.channelId && !isConnectedHere;
   const peers = isConnectedHere ? voice.peers : [];
+  const [shareSupported] = useState(() => {
+    try {
+      return canShareScreen();
+    } catch {
+      return true;
+    }
+  });
 
   const handleJoin = async () => {
+    useVoiceStore.getState().setJoinError(null);
     setJoiningLocal(true);
     try {
       await voiceActions.join(channelId, serverId);
     } finally {
       setJoiningLocal(false);
+    }
+  };
+
+  const handleRetryPeer = async (peerUserId: string) => {
+    // Targeted retry: leave + rejoin rebuilds every peer connection.
+    setRetryingPeer(peerUserId);
+    try {
+      await voiceActions.rejoin();
+    } finally {
+      setRetryingPeer(null);
     }
   };
 
@@ -414,16 +433,16 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-speakit-bg">
-      <div className="flex h-12 items-center gap-2 border-b border-black/30 px-4">
-        <Volume2 size={18} className="text-speakit-muted" />
-        <span className="font-bold text-white">{channelName}</span>
-        <span className="text-xs text-speakit-muted">Voice channel</span>
+      <div className="flex h-12 min-w-0 items-center gap-2 border-b border-black/30 px-3 sm:px-4">
+        <Volume2 size={18} className="shrink-0 text-speakit-muted" />
+        <span className="truncate font-bold text-white">{channelName}</span>
+        <span className="hidden shrink-0 text-xs text-speakit-muted sm:block">Voice channel</span>
       </div>
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
+      <div className="smooth-scroll flex flex-1 flex-col items-center justify-center gap-4 overflow-y-auto p-4 sm:p-8">
         {connectedElsewhere ? (
           <>
             <Volume2 size={64} className="text-speakit-green/60" />
-            <h3 className="text-xl font-bold text-white">You&apos;re in another voice channel</h3>
+            <h3 className="text-center text-xl font-bold text-white">You&apos;re in another voice channel</h3>
             <p className="max-w-md text-center text-sm text-speakit-muted">
               Voice stays connected while you browse. Switch to join {channelName} instead.
             </p>
@@ -438,26 +457,47 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
         ) : !isConnectedHere ? (
           <>
             <Volume2 size={64} className="text-white/20" />
-            <h3 className="text-xl font-bold text-white">Jump into voice!</h3>
+            <h3 className="text-center text-xl font-bold text-white">Jump into voice!</h3>
             <p className="max-w-md text-center text-sm text-speakit-muted">
-              Voice channels are live. Your audio stays in this channel only. Allow mic access to talk.
+              Voice channels are live. Your audio stays in this channel only. Allow mic access to talk — or join without a mic to just listen.
             </p>
-            <button
-              onClick={handleJoin}
-              disabled={joiningLocal || voice.joining}
-              className="rounded-md bg-speakit-green px-6 py-2.5 font-semibold text-white hover:bg-[#1a8a4a] disabled:opacity-50"
-            >
-              {joiningLocal || voice.joining ? "Connecting…" : "Join Voice"}
-            </button>
+            {voice.joinError && (
+              <div className="w-full max-w-md rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-center text-sm text-red-300">
+                {voice.joinError}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                onClick={handleJoin}
+                disabled={joiningLocal || voice.joining}
+                className="rounded-md bg-speakit-green px-6 py-2.5 font-semibold text-white hover:bg-[#1a8a4a] disabled:opacity-50"
+              >
+                {joiningLocal || voice.joining ? "Connecting…" : "Join Voice"}
+              </button>
+              {(joiningLocal || voice.joining) && (
+                <button
+                  onClick={() => {
+                    voiceActions.leave();
+                    setJoiningLocal(false);
+                  }}
+                  className="rounded-md bg-white/10 px-4 py-2.5 text-sm text-white hover:bg-white/20"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+            <p className="max-w-md text-center text-[11px] text-speakit-muted">
+              On mobile data? Voice uses a direct connection — if it never connects, the server may need a TURN relay (admin setting).
+            </p>
           </>
         ) : (
           <div className="w-full max-w-4xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-bold text-white">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="min-w-0 font-bold text-white">
                 <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-speakit-green" />
-                {channelName} • {peers.length + 1} in voice • <CallTimer since={voice.connectedAt} />
+                <span className="truncate">{channelName} • {peers.length + 1} in voice • <CallTimer since={voice.connectedAt} /></span>
               </h3>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => useVoiceStore.getState().setSelfMuted(!voice.selfMuted)}
                   className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
@@ -470,18 +510,35 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                 >
                   {voice.selfDeafened ? "Undeafen" : "Deafen"}
                 </button>
-                <button
-                  onClick={() => void (voice.sharingSelf ? voiceActions.stopShare() : voiceActions.startShare())}
-                  title={voice.sharingSelf ? "Stop sharing your screen" : "Share your screen"}
-                  className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
-                >
-                  {voice.sharingSelf ? "Stop share" : "Share screen"}
-                </button>
+                {shareSupported ? (
+                  <button
+                    onClick={() => void (voice.sharingSelf ? voiceActions.stopShare() : voiceActions.startShare())}
+                    title={voice.sharingSelf ? "Stop sharing your screen" : "Share your screen"}
+                    className="rounded-md bg-white/10 px-3 py-1.5 text-sm text-white hover:bg-white/20"
+                  >
+                    {voice.sharingSelf ? "Stop share" : "Share screen"}
+                  </button>
+                ) : (
+                  <span title="Screen sharing isn't supported on this device/browser" className="cursor-not-allowed rounded-md bg-white/5 px-3 py-1.5 text-sm text-speakit-muted">
+                    Share N/A
+                  </span>
+                )}
                 <button onClick={handleLeave} className="rounded-md bg-red-500 px-3 py-1.5 text-sm text-white hover:bg-red-600">
                   Disconnect
                 </button>
               </div>
             </div>
+            {voice.micBlocked && (
+              <div className="mb-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-2.5 text-center text-xs text-yellow-200">
+                Microphone is blocked — you&apos;re listen-only. Allow mic access in your browser settings, then Reconnect.
+              </div>
+            )}
+            {voice.joinError && (
+              <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 p-2.5 text-center text-xs text-red-300">
+                {voice.joinError}{" "}
+                <button onClick={() => void voiceActions.rejoin()} className="font-bold underline">Reconnect</button>
+              </div>
+            )}
             {(screens.length > 0 || voice.selfScreen) && (
               <div className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
                 {voice.selfScreen && (
@@ -507,28 +564,40 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                 })}
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
               <div
-                className="flex flex-col items-center gap-2 rounded-xl p-5"
+                className="flex flex-col items-center gap-2 rounded-xl p-3 sm:p-5"
                 style={{ background: "linear-gradient(135deg, #5865f255, #2b2d31 70%)" }}
               >
-                <Avatar name="You" color="#5865f2" size={72} />
-                <span className="text-sm font-semibold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
+                <Avatar name="You" color="#5865f2" size={56} />
+                <span className="text-center text-sm font-semibold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
+                {voice.micBlocked && <span className="text-[11px] text-yellow-200/80">listen-only (no mic)</span>}
                 {voice.sharingSelf && <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">LIVE</span>}
               </div>
               {peers.map((p) => {
                 const sharing = screens.some(([id]) => id === p.userId);
+                const conn = voice.peerConn[p.userId];
+                const struggling = conn === "connecting" || conn === "new" || conn === "disconnected" || conn === "failed";
                 return (
                   <div
                     key={p.userId}
-                    className="flex flex-col items-center gap-2 rounded-xl p-5"
+                    className="flex flex-col items-center gap-2 rounded-xl p-3 sm:p-5"
                     style={{ background: `linear-gradient(135deg, ${p.avatarColor}44, #2b2d31 70%)` }}
                   >
-                    <Avatar name={p.displayName} color={p.avatarColor} src={p.avatarUrl || undefined} size={72} />
-                    <span className="text-sm font-semibold text-white">{p.displayName}</span>
+                    <Avatar name={p.displayName} color={p.avatarColor} src={p.avatarUrl || undefined} size={56} />
+                    <span className="max-w-full truncate text-center text-sm font-semibold text-white">{p.displayName}</span>
                     <span className="flex items-center gap-1.5 text-[11px]">
                       {sharing ? (
                         <span className="rounded bg-red-500 px-1.5 py-0.5 font-bold text-white">LIVE</span>
+                      ) : struggling ? (
+                        <button
+                          onClick={() => void handleRetryPeer(p.userId)}
+                          disabled={retryingPeer === p.userId}
+                          className="rounded bg-yellow-500/20 px-1.5 py-0.5 font-semibold text-yellow-200 hover:bg-yellow-500/30"
+                          title={conn === "failed" && !hasTurnConfigured() ? "Direct connection failed — server may need a TURN relay. Click to retry." : "Still connecting… click to retry."}
+                        >
+                          {retryingPeer === p.userId ? "retrying…" : conn === "failed" ? "failed — retry?" : "connecting…"}
+                        </button>
                       ) : (
                         <span className="text-speakit-muted">{p.muted ? "muted" : "live"}</span>
                       )}
@@ -537,6 +606,11 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                 );
               })}
             </div>
+            {peers.length === 0 && screens.length === 0 && !voice.selfScreen && (
+              <p className="mt-2 text-center text-xs text-speakit-muted">
+                You&apos;re the only one here — friends joining this channel will show up above.
+              </p>
+            )}
             {voice.sharingSelf && (
               <p className="mt-2 text-center text-xs text-speakit-green">You&apos;re sharing your screen — stop sharing from your browser&apos;s picker or the button above.</p>
             )}

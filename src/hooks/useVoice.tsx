@@ -5,9 +5,37 @@ import { getSocket } from "@/lib/socket";
 import { useVoiceStore } from "@/store/useVoiceStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
-const RTC_CONFIG: RTCConfiguration = {
-  iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }],
-};
+function buildRtcConfig(): RTCConfiguration {
+  const iceServers: RTCIceServer[] = [
+    {
+      urls: [
+        "stun:stun.l.google.com:19302",
+        "stun:stun1.l.google.com:19302",
+        "stun:stun2.l.google.com:19302",
+      ],
+    },
+  ];
+  // Mobile-to-mobile calls across carriers almost always need TURN (symmetric
+  // NATs). Set these three env vars to enable it, e.g. a free Metered/Cloudflare
+  // TURN credential. Without TURN, voice may work on wifi but fail on mobile data.
+  const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
+  const turnUser = process.env.NEXT_PUBLIC_TURN_USERNAME;
+  const turnCred = process.env.NEXT_PUBLIC_TURN_CREDENTIAL;
+  if (turnUrl && turnUser && turnCred) {
+    iceServers.push({ urls: [turnUrl], username: turnUser, credential: turnCred });
+  }
+  return { iceServers };
+}
+
+export function hasTurnConfigured(): boolean {
+  return !!(process.env.NEXT_PUBLIC_TURN_URL && process.env.NEXT_PUBLIC_TURN_USERNAME && process.env.NEXT_PUBLIC_TURN_CREDENTIAL);
+}
+
+export function canShareScreen(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const md = navigator.mediaDevices as MediaDevices & { getDisplayMedia?: unknown } | undefined;
+  return !!md?.getDisplayMedia;
+}
 
 /**
  * Global voice actions. A single persistent `VoiceBridge` (mounted in HomePage)
@@ -40,9 +68,45 @@ export function useVoice(channelId: string | null, serverId: string | null) {
   const pcs = useRef(new Map<string, RTCPeerConnection>());
   const localStream = useRef<MediaStream | null>(null);
   const localScreen = useRef<MediaStream | null>(null);
+  /** ICE candidates that arrived before the remote description — flushed after. */
+  const pendingIce = useRef(new Map<string, RTCIceCandidateInit[]>());
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const channelRef = useRef<string | null>(null);
   const joinRef = useRef<(c: string, s: string) => Promise<void>>(async () => {});
+
+  const flushIce = useCallback(async (peerUserId: string) => {
+    const pc = pcs.current.get(peerUserId);
+    const queued = pendingIce.current.get(peerUserId);
+    if (!pc || !queued || queued.length === 0 || !pc.remoteDescription) return;
+    pendingIce.current.delete(peerUserId);
+    for (const init of queued) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(init));
+      } catch {
+        /* stale candidate — safe to drop */
+      }
+    }
+  }, []);
+
+  const queueOrAddIce = useCallback(
+    async (peerUserId: string, init: RTCIceCandidateInit) => {
+      const pc = pcs.current.get(peerUserId);
+      if (pc && pc.remoteDescription) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(init));
+          return;
+        } catch {
+          /* fall through to queue */
+        }
+      }
+      const list = pendingIce.current.get(peerUserId) ?? [];
+      if (list.length < 50) {
+        list.push(init);
+        pendingIce.current.set(peerUserId, list);
+      }
+    },
+    []
+  );
 
   const cleanupPCs = useCallback(() => {
     pcs.current.forEach((pc) => {
@@ -51,6 +115,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
       } catch { /* ignore */ }
     });
     pcs.current.clear();
+    pendingIce.current.clear();
     setRemoteStreams({});
   }, []);
 
@@ -58,6 +123,9 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     const pc = pcs.current.get(peerUserId);
     const cid = channelRef.current;
     if (!pc || !cid) return;
+    // Never negotiate mid-handshake — the in-flight exchange will pick up new
+    // tracks when it completes (or the next renegotiate will).
+    if (pc.signalingState !== "stable") return;
     try {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -67,11 +135,27 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     }
   }, []);
 
+  // Waits for the handshake to settle, then re-offers (used after an ICE restart).
+  const renegotiateAfterStable = useCallback(
+    async (peerUserId: string) => {
+      for (let i = 0; i < 20; i++) {
+        const pc = pcs.current.get(peerUserId);
+        if (!pc) return;
+        if (pc.signalingState === "stable" && pc.connectionState !== "closed") {
+          await renegotiate(peerUserId);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    },
+    [renegotiate]
+  );
+
   const createPC = useCallback(
     (peerUserId: string, local: MediaStream | null) => {
       let pc = pcs.current.get(peerUserId);
       if (pc) return pc;
-      pc = new RTCPeerConnection(RTC_CONFIG);
+      pc = new RTCPeerConnection(buildRtcConfig());
       if (local) {
         local.getTracks().forEach((t) => {
           try {
@@ -89,6 +173,17 @@ export function useVoice(channelId: string | null, serverId: string | null) {
           });
         }
       };
+      pc.onconnectionstatechange = () => {
+        const state = pc!.connectionState;
+        useVoiceStore.getState().setPeerConn(peerUserId, state);
+        if (state === "failed") {
+          // One ICE restart attempt before surfacing "failed" to the user.
+          try {
+            pc!.restartIce();
+          } catch { /* ignore */ }
+          void renegotiateAfterStable(peerUserId);
+        }
+      };
       pc.ontrack = (e) => {
         const stream = e.streams[0];
         if (!stream) return;
@@ -100,9 +195,10 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         }
       };
       pcs.current.set(peerUserId, pc);
+      useVoiceStore.getState().setPeerConn(peerUserId, pc.connectionState);
       return pc;
     },
-    []
+    [renegotiate, renegotiateAfterStable]
   );
 
   const join = useCallback(
@@ -114,12 +210,23 @@ export function useVoice(channelId: string | null, serverId: string | null) {
       // If already in this channel, do nothing
       if (channelRef.current === cid && useVoiceStore.getState().channelId === cid) return;
       const socket = getSocket();
+      if (!socket.connected) {
+        useVoiceStore.getState().setJoinError("Not connected — retrying… (check your connection)");
+        try {
+          socket.connect();
+        } catch { /* ignore */ }
+      }
       setJoining(true);
+      useVoiceStore.getState().setJoinError(null);
+      useVoiceStore.getState().setMicBlocked(false);
       try {
         let stream: MediaStream | null = null;
+        let micBlocked = false;
         try {
+          if (!navigator.mediaDevices?.getUserMedia) throw new Error("no mic api");
           stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
         } catch (e) {
+          micBlocked = e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "SecurityError");
           console.warn("mic unavailable, joining listen-only", e);
         }
         localStream.current = stream;
@@ -127,14 +234,41 @@ export function useVoice(channelId: string | null, serverId: string | null) {
           stream.getAudioTracks().forEach((t) => {
             t.enabled = !useVoiceStore.getState().selfMuted && !useVoiceStore.getState().selfDeafened;
           });
+        } else {
+          useVoiceStore.getState().setMicBlocked(true);
+          if (micBlocked) {
+            useVoiceStore.getState().setJoinError(null);
+          }
         }
         channelRef.current = cid;
         setChannel(cid, sid);
         useVoiceStore.getState().setConnectedAt(Date.now());
 
+        // Never hang on "Connecting…" — the ack must arrive within 12s.
         const ack: { ok?: boolean; users?: { userId: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string }[]; error?: string } =
           await new Promise((resolve) => {
-            socket.emit("voice:join", { channelId: cid }, (res: unknown) => resolve(res as { ok?: boolean; users?: never[] }));
+            let done = false;
+            const timer = setTimeout(() => {
+              if (!done) {
+                done = true;
+                resolve({ error: "Voice server didn't answer in time. Check your connection and retry." });
+              }
+            }, 12000);
+            try {
+              socket.emit("voice:join", { channelId: cid }, (res: unknown) => {
+                if (!done) {
+                  done = true;
+                  clearTimeout(timer);
+                  resolve(res as { ok?: boolean; users?: never[] });
+                }
+              });
+            } catch {
+              if (!done) {
+                done = true;
+                clearTimeout(timer);
+                resolve({ error: "Couldn't reach the voice server. Check your connection and retry." });
+              }
+            }
           });
 
         if (ack?.error) throw new Error(ack.error);
@@ -156,8 +290,19 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         }
       } catch (e) {
         console.error("voice join failed", e);
+        const message = e instanceof Error ? e.message : "Couldn't join voice. Retry in a moment.";
+        useVoiceStore.getState().setJoinError(message);
+        try {
+          localStream.current?.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch { /* ignore */ }
+          });
+        } catch { /* ignore */ }
+        localStream.current = null;
         channelRef.current = null;
         useVoiceStore.getState().reset();
+        useVoiceStore.getState().setJoinError(message);
       } finally {
         setJoining(false);
       }
@@ -246,6 +391,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     } catch { /* ignore */ }
     localStream.current = null;
     localScreen.current = null;
+    pendingIce.current.clear();
     cleanupPCs();
     channelRef.current = null;
     useVoiceStore.getState().reset();
@@ -286,10 +432,24 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     const onSignal = async (msg: { fromUserId: string; channelId: string; kind: "offer" | "answer" | "ice"; payload: unknown }) => {
       if (msg.channelId !== channelRef.current) return;
       const from = msg.fromUserId;
+      const selfId = useAuthStore.getState().user?.id;
       try {
         if (msg.kind === "offer") {
           const pc = createPC(from, localStream.current);
+          // Perfect-negotiation-lite: simultaneous offers ("glare") happen when
+          // two people join at once. The lexicographically-smaller user is
+          // polite (rolls back and answers); the other ignores and waits.
+          if (pc.signalingState !== "stable") {
+            const polite = !!selfId && selfId < from;
+            if (!polite) return;
+            try {
+              await pc.setLocalDescription({ type: "rollback" });
+            } catch {
+              /* already stable — continue */
+            }
+          }
           await pc.setRemoteDescription(new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit));
+          await flushIce(from);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           socket.emit("voice:signal", { toUserId: from, channelId: msg.channelId, kind: "answer", payload: answer });
@@ -313,15 +473,11 @@ export function useVoice(channelId: string | null, serverId: string | null) {
           const pc = pcs.current.get(from);
           if (pc && pc.signalingState !== "stable") {
             await pc.setRemoteDescription(new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit));
+            await flushIce(from);
           }
         } else if (msg.kind === "ice") {
-          const pc = pcs.current.get(from);
-          if (pc && msg.payload) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(msg.payload as RTCIceCandidateInit));
-            } catch (e) {
-              console.warn("ice add failed", e);
-            }
+          if (msg.payload) {
+            await queueOrAddIce(from, msg.payload as RTCIceCandidateInit);
           }
         }
       } catch (e) {
@@ -341,6 +497,8 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         pc?.close();
       } catch { /* ignore */ }
       pcs.current.delete(msg.userId);
+      pendingIce.current.delete(msg.userId);
+      useVoiceStore.getState().setPeerConn(msg.userId, null);
       useVoiceStore.getState().setScreenStream(msg.userId, null);
       setRemoteStreams((prev) => {
         const next = { ...prev };
@@ -371,7 +529,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
       socket.off("voice:users", onUsers);
       socket.off("voice:state-updated", onState);
     };
-  }, [createPC, removePeer, setPeers, upsertPeer, renegotiate]);
+  }, [createPC, removePeer, setPeers, upsertPeer, renegotiate, flushIce, queueOrAddIce]);
 
   // Mute / deafen sync
   useEffect(() => {
@@ -407,17 +565,26 @@ export function VoiceBridge() {
       const el = document.getElementById(`voice-audio-${userId}`) as HTMLAudioElement | null;
       if (el && el.srcObject !== stream) {
         el.srcObject = stream;
-        el.muted = false;
-        void el.play().catch(() => {});
+        el.muted = selfDeafened;
+        void el.play().catch(() => {
+          // Mobile browsers may block playback until the next tap — retry then.
+          const unlock = () => {
+            void el.play().catch(() => {});
+            window.removeEventListener("pointerdown", unlock);
+          };
+          window.addEventListener("pointerdown", unlock, { once: true });
+        });
+      } else if (el) {
+        el.muted = selfDeafened;
       }
     });
-  }, [remoteStreams]);
+  }, [remoteStreams, selfDeafened]);
 
   if (!channelId) return null;
   return (
     <div className="hidden">
       {Object.entries(remoteStreams).map(([userId]) => (
-        <audio key={userId} id={`voice-audio-${userId}`} autoPlay playsInline muted={selfDeafened} />
+        <audio key={userId} id={`voice-audio-${userId}`} autoPlay playsInline preload="none" />
       ))}
       <span className="hidden">{serverId}</span>
     </div>
