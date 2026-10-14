@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { prisma } from "@/lib/db";
+import { prisma } from "../db";
 import { runBotCode, parseStore, type BotAction, type BotTrigger } from "./sandbox";
 
 /** Token shown ONCE to the owner, used as `Authorization: Bot <token>`. */
