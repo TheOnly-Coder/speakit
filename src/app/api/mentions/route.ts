@@ -29,7 +29,87 @@ export async function GET() {
       conversationId: m.conversationId,
       createdAt: m.createdAt,
     })),
+    items: await mentionItems(userId, mentions.slice(0, 20)),
   });
+}
+
+type MentionRow = {
+  id: string;
+  messageId: string | null;
+  directMessageId: string | null;
+  channelId: string | null;
+  conversationId: string | null;
+  createdAt: Date;
+};
+
+/** Rich inbox rows so clients can jump straight to the ping. */
+async function mentionItems(userId: string, rows: MentionRow[]) {
+  const items: Record<string, unknown>[] = [];
+  try {
+    const msgIds = [...new Set(rows.map((m) => m.messageId).filter((x): x is string => !!x))];
+    const dmIds = [...new Set(rows.map((m) => m.directMessageId).filter((x): x is string => !!x))];
+    const [msgs, dms] = await Promise.all([
+      msgIds.length > 0
+        ? prisma.message.findMany({
+            where: { id: { in: msgIds } },
+            include: {
+              author: { select: { displayName: true, username: true } },
+              channel: { select: { id: true, name: true, serverId: true, server: { select: { id: true, name: true } } } },
+            },
+          })
+        : Promise.resolve([]),
+      dmIds.length > 0
+        ? prisma.directMessage.findMany({
+            where: { id: { in: dmIds } },
+            include: {
+              author: { select: { displayName: true, username: true } },
+              conversation: {
+                select: {
+                  id: true,
+                  participantA: { select: { id: true, displayName: true, username: true } },
+                  participantB: { select: { id: true, displayName: true, username: true } },
+                },
+              },
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+    const byMsg = new Map(msgs.map((m) => [m.id, m]));
+    const byDm = new Map(dms.map((m) => [m.id, m]));
+    for (const row of rows) {
+      if (row.messageId) {
+        const m = byMsg.get(row.messageId);
+        if (!m) continue;
+        items.push({
+          id: row.id,
+          kind: "channel",
+          channelId: m.channel.id,
+          channelName: m.channel.name,
+          serverId: m.channel.server.id,
+          serverName: m.channel.server.name,
+          authorName: m.author.displayName,
+          preview: m.content.slice(0, 120),
+          createdAt: row.createdAt,
+        });
+      } else if (row.directMessageId) {
+        const m = byDm.get(row.directMessageId);
+        if (!m) continue;
+        const other = m.conversation.participantA.id === userId ? m.conversation.participantB : m.conversation.participantA;
+        items.push({
+          id: row.id,
+          kind: "dm",
+          conversationId: m.conversation.id,
+          dmName: other.displayName,
+          authorName: m.author.displayName,
+          preview: m.content.slice(0, 120),
+          createdAt: row.createdAt,
+        });
+      }
+    }
+  } catch {
+    /* inbox enrichment is best-effort */
+  }
+  return items;
 }
 
 export async function POST(req: Request) {

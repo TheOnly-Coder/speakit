@@ -20,6 +20,8 @@ import { Avatar } from "@/components/Avatar";
 import { QuickSwitcher } from "@/components/QuickSwitcher";
 import { ContextMenuHost } from "@/components/ContextMenu";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { MobileTabBar, type MobileTab } from "@/components/MobileTabBar";
+import { MobileInbox } from "@/components/MobileInbox";
 import { usePwaInstall } from "@/components/PwaRegister";
 import {
   CreateServerModal,
@@ -73,6 +75,8 @@ export default function HomePage() {
   const [channelSettingsId, setChannelSettingsId] = useState<string | null>(null);
   const [showBrowse, setShowBrowse] = useState(false);
   const [showQuick, setShowQuick] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("chats");
   const [mobileNav, setMobileNav] = useState(false);
   const [socketStatus, setSocketStatus] = useState("connecting");
   const { theme, toggle: toggleTheme, apply: applyTheme } = useThemeStore();
@@ -287,6 +291,24 @@ export default function HomePage() {
     setShowChannel(true);
   };
 
+  // Discord-mobile tabs: Friends jumps to the friends dashboard…
+  const goFriends = useCallback(() => {
+    setActiveServer(null);
+    setView("home");
+    setActiveDM(null);
+    setMobileTab("friends");
+    setMobileNav(false);
+  }, [setActiveServer, setView, setActiveDM]);
+
+  // …and opening any chat drops you back on the Home/Chats tab.
+  const openDM = useCallback(
+    (id: string) => {
+      setActiveDM(id);
+      setMobileTab("chats");
+    },
+    [setActiveDM]
+  );
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#1e1f22]">
@@ -312,7 +334,12 @@ export default function HomePage() {
       }}
     />
   ) : (
-    <DMSidebar onAddFriend={() => setShowAddFriend(true)} onOpenSettings={() => setShowSettings(true)} />
+    <DMSidebar
+      onAddFriend={() => setShowAddFriend(true)}
+      onOpenSettings={() => setShowSettings(true)}
+      onShowFriends={goFriends}
+      onNewDM={() => setShowNewDM(true)}
+    />
   );
 
   return (
@@ -338,7 +365,7 @@ export default function HomePage() {
       {mobileNav && (
         <div className="fixed inset-0 z-[70] flex sm:hidden">
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileNav(false)} />
-          <div className="relative flex max-w-[92vw] shrink-0 overflow-hidden rounded-r-2xl">
+          <div className="drawer-in relative flex max-h-full max-w-[92vw] shrink-0 overflow-hidden rounded-r-2xl">
             <ServerRail
               onAdd={() => { setMobileNav(false); setShowCreate(true); }}
               onJoin={() => { setMobileNav(false); setShowJoin(true); }}
@@ -392,7 +419,13 @@ export default function HomePage() {
         </div>
 
         <div className="flex min-h-0 flex-1">
-          {view === "server" ? (
+          {mobileTab === "friends" ? (
+            <HomeDashboard
+              onAddFriend={() => setShowAddFriend(true)}
+              onNewDM={() => setShowNewDM(true)}
+              onOpenDM={openDM}
+            />
+          ) : view === "server" ? (
             activeChannelId ? (
               <ChatView key={activeChannelId} channelId={activeChannelId} />
             ) : (
@@ -410,13 +443,27 @@ export default function HomePage() {
             <HomeDashboard
               onAddFriend={() => setShowAddFriend(true)}
               onNewDM={() => setShowNewDM(true)}
-              onOpenDM={(id) => setActiveDM(id)}
+              onOpenDM={openDM}
             />
           )}
         </div>
+
+        {/* Discord-mobile bottom tabs (phones only) */}
+        <MobileTabBar
+          tab={mobileTab}
+          onChats={() => {
+            setMobileTab("chats");
+            setMobileNav(false);
+          }}
+          onFriends={goFriends}
+          onSearch={() => setShowQuick(true)}
+          onInbox={() => setShowInbox(true)}
+          onYou={() => setShowSettings(true)}
+        />
       </div>
 
       <QuickSwitcher open={showQuick} onClose={() => setShowQuick(false)} />
+      <MobileInbox open={showInbox} onClose={() => setShowInbox(false)} />
       <CreateServerModal open={showCreate} onClose={() => setShowCreate(false)} />
       <JoinServerModal open={showJoin} onClose={() => setShowJoin(false)} />
       <CreateChannelModal open={showChannel} onClose={() => setShowChannel(false)} defaultType={channelType} categoryId={channelCategory} />
