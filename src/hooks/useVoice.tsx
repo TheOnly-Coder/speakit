@@ -130,6 +130,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
         }
         channelRef.current = cid;
         setChannel(cid, sid);
+        useVoiceStore.getState().setConnectedAt(Date.now());
 
         const ack: { ok?: boolean; users?: { userId: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string }[]; error?: string } =
           await new Promise((resolve) => {
@@ -179,6 +180,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     }
     localScreen.current = null;
     st.setSharingSelf(false);
+    st.setSelfScreen(null);
     st.setScreenStream("self", null);
     // Drop screen senders everywhere and renegotiate so peers remove the video.
     pcs.current.forEach((pc, peerId) => {
@@ -210,6 +212,7 @@ export function useVoice(channelId: string | null, serverId: string | null) {
     }
     localScreen.current = screen;
     st.setSharingSelf(true);
+    st.setSelfScreen(screen);
     screen.getVideoTracks().forEach((t) => {
       t.onended = () => stopShare();
     });

@@ -379,6 +379,26 @@ function RoleEditor({ role, refresh }: { role: RoleItem; refresh: () => Promise<
   };
   const toggle = (p: string) => setPerms((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
 
+  const [assignMsg, setAssignMsg] = useState("");
+  const [assignTo, setAssignTo] = useState("");
+  const holders = (serverDetail.members ?? []).filter((m) => m.roleIds.includes(role.id));
+  const nonHolders = (serverDetail.members ?? []).filter((m) => !m.roleIds.includes(role.id) && m.role !== "owner");
+
+  const setRole = async (targetUserId: string, action: "add" | "remove") => {
+    setAssignMsg("");
+    const res = await fetch(`/api/servers/${serverDetail.id}/members/${targetUserId}/roles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roleId: role.id, action }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setAssignMsg(data.error ?? "Couldn't change roles");
+      return;
+    }
+    await refresh();
+  };
+
   return (
     <div>
       <div className="mb-2 flex gap-2">
@@ -397,6 +417,38 @@ function RoleEditor({ role, refresh }: { role: RoleItem; refresh: () => Promise<
       <div className="flex gap-2">
         <PrimaryButton onClick={() => void save()}>Save role</PrimaryButton>
         <button onClick={() => void remove()} className="rounded-md bg-red-500/20 px-3 text-sm text-red-400 hover:bg-red-500/30">Delete</button>
+      </div>
+      <div className="mt-3 border-t border-white/10 pt-2">
+        <div className="mb-1 text-xs font-bold uppercase text-speakit-muted">Members with this role ({holders.length})</div>
+        {holders.length === 0 && <div className="mb-1 text-xs text-speakit-muted">Nobody yet — give it to someone below.</div>}
+        <div className="mb-2 max-h-24 space-y-1 overflow-y-auto">
+          {holders.map((m) => (
+            <div key={m.id} className="flex items-center gap-2 rounded bg-speakit-input px-2 py-1 text-xs text-white">
+              <Avatar name={m.displayName} color={m.avatarColor} src={m.avatarUrl || undefined} size={20} />
+              <span className="flex-1 truncate">{m.displayName} <span className="text-speakit-muted">@{m.username}</span></span>
+              <button onClick={() => void setRole(m.id, "remove")} className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] hover:bg-white/20">Remove</button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          <select value={assignTo} onChange={(e) => setAssignTo(e.target.value)} className={`${inputCls} text-sm`}>
+            <option value="">Give to a member…</option>
+            {nonHolders.map((m) => (
+              <option key={m.id} value={m.id}>{m.displayName} (@{m.username})</option>
+            ))}
+          </select>
+          <button
+            onClick={() => {
+              if (!assignTo) return;
+              void setRole(assignTo, "add").then(() => setAssignTo(""));
+            }}
+            disabled={!assignTo}
+            className="shrink-0 rounded-md bg-speakit-green px-3 text-sm text-white disabled:opacity-40"
+          >
+            Give role
+          </button>
+        </div>
+        {assignMsg && <div className="mt-1 text-xs text-red-400">{assignMsg}</div>}
       </div>
     </div>
   );

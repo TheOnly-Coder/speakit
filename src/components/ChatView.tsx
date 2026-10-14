@@ -350,6 +350,20 @@ export function ChatView({ channelId }: { channelId: string }) {
   );
 }
 
+function CallTimer({ since }: { since: number | null }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!since) return;
+    const t = setInterval(() => tick((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [since]);
+  if (!since) return null;
+  const s = Math.max(0, Math.floor((Date.now() - since) / 1000));
+  const mm = String(Math.floor(s / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return <span className="tabular-nums">{mm}:{ss}</span>;
+}
+
 function VoiceChannelView({ channelId, serverId, channelName }: { channelId: string; serverId: string; channelName: string }) {
   const voice = useVoiceStore();
   const [joiningLocal, setJoiningLocal] = useState(false);
@@ -385,7 +399,14 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
   const screens = isConnectedHere ? Object.entries(voice.screenStreams) : [];
 
   useEffect(() => {
-    // Attach remote screen streams to their <video> tiles (runs after every render — cheap).
+    // Attach screen streams to their <video> tiles (runs after every render — cheap).
+    if (voice.selfScreen) {
+      const el = document.getElementById("voice-screen-self") as HTMLVideoElement | null;
+      if (el && el.srcObject !== voice.selfScreen) {
+        el.srcObject = voice.selfScreen;
+        void el.play().catch(() => {});
+      }
+    }
     for (const [userId, stream] of screens) {
       const el = document.getElementById(`voice-screen-${userId}`) as HTMLVideoElement | null;
       if (el && el.srcObject !== stream) {
@@ -434,9 +455,12 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
             </button>
           </>
         ) : (
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-4xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-bold text-white">Connected • {peers.length + 1} in voice</h3>
+              <h3 className="font-bold text-white">
+                <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-speakit-green" />
+                {channelName} • {peers.length + 1} in voice • <CallTimer since={voice.connectedAt} />
+              </h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => useVoiceStore.getState().setSelfMuted(!voice.selfMuted)}
@@ -462,36 +486,65 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="flex flex-col items-center gap-2 rounded-lg bg-[#2b2d31] p-4">
-                <Avatar name="You" color="#5865f2" size={56} />
-                <span className="text-sm font-semibold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
-              </div>
-              {peers.map((p) => (
-                <div key={p.userId} className="flex flex-col items-center gap-2 rounded-lg bg-[#2b2d31] p-4">
-                  <Avatar name={p.displayName} color={p.avatarColor} src={p.avatarUrl || undefined} size={56} />
-                  <span className="text-sm font-semibold text-white">{p.displayName}</span>
-                  <span className="text-[11px] text-speakit-muted">{p.muted ? "muted" : "live"}</span>
-                </div>
-              ))}
-            </div>
-            {screens.length > 0 && (
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {(screens.length > 0 || voice.selfScreen) && (
+              <div className="mb-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                {voice.selfScreen && (
+                  <div className="overflow-hidden rounded-xl bg-black ring-1 ring-speakit-green">
+                    <video id="voice-screen-self" autoPlay playsInline muted className="max-h-80 w-full object-contain" />
+                    <div className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                      <span className="rounded bg-red-500 px-1.5 py-0.5 font-bold text-white">LIVE</span>
+                      <span className="font-semibold text-white">Your screen</span>
+                    </div>
+                  </div>
+                )}
                 {screens.map(([userId]) => {
                   const peer = peers.find((p) => p.userId === userId);
                   return (
-                    <div key={userId} className="overflow-hidden rounded-lg bg-black">
-                      <video id={`voice-screen-${userId}`} autoPlay playsInline muted={false} className="max-h-72 w-full object-contain" />
-                      <div className="px-3 py-1.5 text-xs text-speakit-muted">🖥️ {peer ? peer.displayName : "Someone"}&apos;s screen</div>
+                    <div key={userId} className="overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+                      <video id={`voice-screen-${userId}`} autoPlay playsInline className="max-h-80 w-full object-contain" />
+                      <div className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                        <span className="rounded bg-red-500 px-1.5 py-0.5 font-bold text-white">LIVE</span>
+                        <span className="font-semibold text-white">{peer ? peer.displayName : "Someone"}&apos;s screen</span>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div
+                className="flex flex-col items-center gap-2 rounded-xl p-5"
+                style={{ background: "linear-gradient(135deg, #5865f255, #2b2d31 70%)" }}
+              >
+                <Avatar name="You" color="#5865f2" size={72} />
+                <span className="text-sm font-semibold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
+                {voice.sharingSelf && <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">LIVE</span>}
+              </div>
+              {peers.map((p) => {
+                const sharing = screens.some(([id]) => id === p.userId);
+                return (
+                  <div
+                    key={p.userId}
+                    className="flex flex-col items-center gap-2 rounded-xl p-5"
+                    style={{ background: `linear-gradient(135deg, ${p.avatarColor}44, #2b2d31 70%)` }}
+                  >
+                    <Avatar name={p.displayName} color={p.avatarColor} src={p.avatarUrl || undefined} size={72} />
+                    <span className="text-sm font-semibold text-white">{p.displayName}</span>
+                    <span className="flex items-center gap-1.5 text-[11px]">
+                      {sharing ? (
+                        <span className="rounded bg-red-500 px-1.5 py-0.5 font-bold text-white">LIVE</span>
+                      ) : (
+                        <span className="text-speakit-muted">{p.muted ? "muted" : "live"}</span>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
             {voice.sharingSelf && (
               <p className="mt-2 text-center text-xs text-speakit-green">You&apos;re sharing your screen — stop sharing from your browser&apos;s picker or the button above.</p>
             )}
-            <p className="mt-3 text-center text-xs text-speakit-muted">Audio plays globally — you can browse other channels while connected.</p>
+            <p className="mt-1 text-center text-xs text-speakit-muted">Audio plays globally — you can browse other channels while connected.</p>
           </div>
         )}
       </div>

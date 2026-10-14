@@ -20,6 +20,8 @@ type VoiceState = {
   joining: boolean;
   sharingSelf: boolean;
   screenStreams: Record<string, MediaStream>;
+  selfScreen: MediaStream | null;
+  connectedAt: number | null;
   setChannel: (channelId: string | null, serverId: string | null) => void;
   setPeers: (peers: VoicePeer[]) => void;
   upsertPeer: (peer: VoicePeer) => void;
@@ -30,6 +32,8 @@ type VoiceState = {
   setJoining: (v: boolean) => void;
   setSharingSelf: (v: boolean) => void;
   setScreenStream: (userId: string, stream: MediaStream | null) => void;
+  setSelfScreen: (stream: MediaStream | null) => void;
+  setConnectedAt: (v: number | null) => void;
   reset: () => void;
 };
 
@@ -42,6 +46,8 @@ export const useVoiceStore = create<VoiceState>((set) => ({
   joining: false,
   sharingSelf: false,
   screenStreams: {},
+  selfScreen: null,
+  connectedAt: null,
   setChannel: (channelId, serverId) => set({ channelId, serverId }),
   setPeers: (peers) => set({ peers }),
   upsertPeer: (peer) =>
@@ -64,5 +70,7 @@ export const useVoiceStore = create<VoiceState>((set) => ({
       else delete screenStreams[userId];
       return { screenStreams };
     }),
-  reset: () => set({ channelId: null, serverId: null, peers: [], selfMuted: false, selfDeafened: false, joining: false, sharingSelf: false, screenStreams: {} }),
+  setSelfScreen: (stream) => set({ selfScreen: stream }),
+  setConnectedAt: (v) => set({ connectedAt: v }),
+  reset: () => set({ channelId: null, serverId: null, peers: [], selfMuted: false, selfDeafened: false, joining: false, sharingSelf: false, screenStreams: {}, selfScreen: null, connectedAt: null }),
 }));
