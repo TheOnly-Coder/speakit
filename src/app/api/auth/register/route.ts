@@ -121,6 +121,20 @@ export async function POST(req: Request) {
     if (error || !data.user) {
       if (isRateLimitError(error)) return rateLimitResponse();
       const msg = error?.message ?? "Sign up failed";
+      // Supabase couldn't hand the confirmation email to the SMTP server
+      // (bad credentials, unverified domain/sender). That's a server config
+      // problem — say so instead of dumping the raw error on the user.
+      if (/error sending|confirmation email|smtp|email not sent/i.test(msg)) {
+        console.error("signup email send failure", error);
+        return NextResponse.json(
+          {
+            error:
+              "We couldn't send the confirmation email — our mail service is misconfigured. The admin has been notified; please try again later.",
+            code: "email_send_failed",
+          },
+          { status: 503 }
+        );
+      }
       const taken = /already|exists|registered/i.test(msg);
       return NextResponse.json({ error: msg }, { status: taken ? 409 : 400 });
     }
