@@ -4,6 +4,8 @@
 
 :root {
   color-scheme: dark;
+  --speakit-blurple: #6c6cf5;
+  --speakit-accent: #a78bfa;
 }
 
 html.light {
@@ -12,18 +14,21 @@ html.light {
 
 /* Light theme: remap our dark palette surfaces to light ones */
 html.light body {
-  background: #f2f3f5;
-  color: #232428;
+  background: #eef0f6;
+  color: #1c1d22;
 }
 html.light .bg-speakit-bg { background-color: #ffffff; }
-html.light .bg-speakit-sidebar { background-color: #f2f3f5; }
-html.light .bg-speakit-rail { background-color: #e3e5e8; }
-html.light .bg-speakit-input { background-color: #ebedef; }
-html.light .bg-\[\#232428\] { background-color: #e3e5e8; }
-html.light .bg-\[\#2b2d31\] { background-color: #f2f3f5; }
-html.light .text-white { color: #232428; }
-html.light .text-speakit-text { color: #2e3338; }
-html.light .text-speakit-muted { color: #5c6067; }
+html.light .bg-speakit-sidebar { background-color: #f3f4f8; }
+html.light .bg-speakit-rail { background-color: #e7e9f1; }
+html.light .bg-speakit-input { background-color: #eceef4; }
+html.light .bg-speakit-card { background-color: #f3f4f8; }
+html.light .bg-\[\#232428\] { background-color: #e7e9f1; }
+html.light .bg-\[\#2b2d31\] { background-color: #f3f4f8; }
+html.light .bg-\[\#1e1f22\] { background-color: #e7e9f1; }
+html.light .bg-\[\#111214\] { background-color: #ffffff; }
+html.light .text-white { color: #1c1d22; }
+html.light .text-speakit-text { color: #2b2d38; }
+html.light .text-speakit-muted { color: #63667a; }
 html.light .border-black\/30 { border-color: #00000018; }
 html.light .hover\:bg-white\/5:hover { background-color: #00000010; }
 html.light .hover\:bg-white\/10:hover { background-color: #00000014; }
@@ -47,8 +52,8 @@ body,
 /* Per-device appearance prefs (local-only, Discord-like) */
 :root {
   --speakit-font-scale: 1;
-  --speakit-sidebar-w: 240px;
-  --speakit-rail-w: 72px;
+  --speakit-sidebar-w: 248px;
+  --speakit-rail-w: 76px;
 }
 
 body {
@@ -56,6 +61,11 @@ body {
   /* Safe-area for notched phones when installed to home screen */
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+::selection {
+  background: rgb(108 108 245 / 0.45);
+  color: #fff;
 }
 
 /* Compact (Discord "Compact") message density */
@@ -92,16 +102,81 @@ html.speakit-reduce-motion .smooth-scroll {
 @keyframes speakit-shell-in {
   from {
     opacity: 0;
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 .speakit-shell-in {
-  animation: speakit-shell-in 160ms ease-out;
+  animation: speakit-shell-in 220ms ease-out;
 }
 html.speakit-reduce-motion .speakit-shell-in {
   animation: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 260ms ease-out both;
+}
+
+/* Skeleton shimmer for loading states */
+@keyframes shimmer-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.06);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.09), transparent);
+  animation: shimmer-slide 1.4s infinite;
+}
+html.speakit-reduce-motion .skeleton::after {
+  animation: none;
+}
+
+/* Typing dots */
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+.typing-dot {
+  animation: typing-bounce 1.2s infinite;
+}
+.typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
 /* Discord-mobile drawer slide-in */
@@ -148,28 +223,35 @@ html.speakit-reduce-motion .sheet-up {
 
 /* Local background active: make Discord surfaces translucent so the image shows through */
 html.speakit-has-bg .bg-speakit-bg {
-  background-color: rgb(49 51 56 / 0.86) !important;
+  background-color: rgb(14 14 19 / 0.86) !important;
 }
 html.speakit-has-bg .bg-speakit-sidebar {
-  background-color: rgb(43 45 49 / 0.88) !important;
+  background-color: rgb(20 20 27 / 0.88) !important;
 }
 html.speakit-has-bg .bg-speakit-rail {
-  background-color: rgb(30 31 34 / 0.9) !important;
+  background-color: rgb(10 10 14 / 0.9) !important;
 }
 html.speakit-has-bg .bg-\[\#1e1f22\] {
-  background-color: rgb(30 31 34 / 0.88) !important;
+  background-color: rgb(12 12 18 / 0.88) !important;
 }
 html.speakit-has-bg .bg-\[\#2b2d31\] {
-  background-color: rgb(43 45 49 / 0.78) !important;
+  background-color: rgb(23 23 31 / 0.78) !important;
 }
 html.speakit-has-bg .bg-\[\#232428\] {
-  background-color: rgb(35 36 40 / 0.88) !important;
+  background-color: rgb(18 18 25 / 0.88) !important;
 }
 
 body {
   @apply bg-speakit-bg text-speakit-text antialiased;
-  /* Discord-like grotesque stack (gg sans first, graceful fallbacks) */
-  font-family: "gg sans", "Noto Sans", Whitney, "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter", "gg sans", "Noto Sans", Whitney, "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
+  /* Subtle ambient mesh so the app never looks flat grey */
+  background-image:
+    radial-gradient(1100px 500px at 15% -10%, rgb(108 108 245 / 0.14), transparent 60%),
+    radial-gradient(900px 480px at 95% 0%, rgb(167 139 250 / 0.1), transparent 60%),
+    radial-gradient(800px 600px at 50% 115%, rgb(34 211 238 / 0.06), transparent 60%);
+  background-attachment: fixed;
 }
 
 /* Pop-in for autocomplete menus, dropdowns and small dialogs */
@@ -184,7 +266,7 @@ body {
   }
 }
 .menu-pop {
-  animation: menu-pop 120ms ease-out;
+  animation: menu-pop 140ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
   transform-origin: bottom left;
 }
 html.speakit-reduce-motion .menu-pop {
@@ -203,24 +285,71 @@ html.speakit-reduce-motion .menu-pop {
   }
 }
 .modal-pop {
-  animation: modal-pop 150ms ease-out;
+  animation: modal-pop 180ms cubic-bezier(0.2, 0.9, 0.3, 1.15);
 }
 html.speakit-reduce-motion .modal-pop {
   animation: none;
 }
 
-/* Slim scrollbars like Discord */
+@keyframes modal-backdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.modal-backdrop {
+  animation: modal-backdrop 160ms ease-out;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Modern focus rings everywhere */
+:focus-visible {
+  outline: 2px solid rgb(108 108 245 / 0.8);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Glass + gradient helpers */
+.glass {
+  background: rgb(23 23 31 / 0.72);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, #6c6cf5 0%, #8b5cf6 45%, #d946ef 100%);
+}
+
+.brand-text-gradient {
+  background: linear-gradient(135deg, #a5b4fc 0%, #c4b5fd 40%, #f0abfc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Slim modern scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1a1b1e transparent;
+  scrollbar-color: rgb(255 255 255 / 0.16) transparent;
 }
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #1a1b1e;
-  border-radius: 8px;
+  background: rgb(255 255 255 / 0.14);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.24);
+  background-clip: content-box;
+  border: 2px solid transparent;
 }
 *::-webkit-scrollbar-track {
   background: transparent;

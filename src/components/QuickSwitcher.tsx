@@ -99,10 +99,12 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center px-4 pt-[12dvh]">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative w-full max-w-lg overflow-hidden rounded-xl bg-[#1e1f22] shadow-2xl ring-1 ring-white/10">
-        <div className="flex items-center gap-2 border-b border-black/30 px-4 py-3">
-          <Search size={16} className="shrink-0 text-speakit-muted" />
+      <div className="modal-backdrop absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="modal-pop relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-[#14141b]/95 shadow-pop backdrop-blur-xl">
+        <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-4 py-3.5">
+          <span className="brand-gradient flex h-7 w-7 items-center justify-center rounded-lg shadow-glow">
+            <Search size={14} className="text-white" />
+          </span>
           <input
             ref={inputRef}
             value={q}
@@ -122,29 +124,29 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
               }
             }}
             placeholder="Where would you like to go? (servers, channels, people)"
-            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-speakit-muted"
+            className="flex-1 bg-transparent text-[15px] font-medium text-white outline-none placeholder:font-normal placeholder:text-speakit-muted/70"
           />
-          <kbd className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-speakit-muted">ESC</kbd>
+          <kbd className="rounded-lg border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-bold text-speakit-muted">ESC</kbd>
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
-          {filtered.length === 0 && <div className="px-3 py-6 text-center text-sm text-speakit-muted">No matches. Try a server, channel, or friend name.</div>}
+          {filtered.length === 0 && <div className="px-3 py-8 text-center text-sm text-speakit-muted">No matches. Try a server, channel, or friend name.</div>}
           {filtered.map((t, i) => (
             <button
               key={`${t.kind}-${t.id}`}
               onMouseEnter={() => setIdx(i)}
               onClick={() => void go(t)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left ${i === idx ? "bg-speakit-blurple/30" : "hover:bg-white/5"}`}
+              className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition-all ${i === idx ? "bg-gradient-to-r from-speakit-blurple/30 to-speakit-accent/15 shadow-card ring-1 ring-white/10" : "hover:bg-white/[0.05]"}`}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-speakit-muted">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-speakit-accent ring-1 ring-white/10">
                 {t.kind === "channel" ? (t.voice ? <Volume2 size={15} /> : <Hash size={15} />) : t.kind === "server" ? <Server size={15} /> : <User size={15} />}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-white">
+                <span className="block truncate text-sm font-bold text-white">
                   {t.kind === "channel" ? "#" : ""}{t.label}
                 </span>
                 <span className="block truncate text-[11px] text-speakit-muted">{t.sub}</span>
               </span>
-              <span className="shrink-0 text-[10px] uppercase text-speakit-muted">{t.kind}</span>
+              <span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-speakit-muted">{t.kind}</span>
             </button>
           ))}
         </div>

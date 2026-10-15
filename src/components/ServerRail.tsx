@@ -27,18 +27,30 @@ export function ServerRail({
   });
 
   return (
-    <div className="flex h-full min-h-0 w-[var(--speakit-rail-w)] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-speakit-rail py-3">
+    <div className="flex h-full min-h-0 w-[var(--speakit-rail-w)] shrink-0 flex-col items-center gap-2 overflow-y-auto border-r border-white/[0.06] bg-speakit-rail/95 py-3 backdrop-blur">
       <button
         onClick={onHome}
         title="Home / DMs"
         className={cn(
-          "flex h-12 w-12 items-center justify-center rounded-full bg-speakit-sidebar text-white transition-all hover:rounded-2xl hover:bg-speakit-blurple",
-          view === "home" && "rounded-2xl bg-speakit-blurple"
+          "group relative flex h-12 w-12 items-center justify-center transition-all duration-200 hover:scale-[1.05] active:scale-95",
+          view === "home" ? "rounded-2xl shadow-glow" : "rounded-full hover:rounded-2xl"
         )}
+        style={
+          view === "home"
+            ? { background: "linear-gradient(135deg,#6c6cf5,#a855f7)" }
+            : undefined
+        }
       >
-        <Home size={22} />
+        <span
+          className={cn(
+            "absolute inset-0 rounded-[inherit] transition-colors",
+            view !== "home" && "bg-white/[0.06] group-hover:bg-white/[0.12]"
+          )}
+        />
+        <Home size={22} className="relative text-white" />
+        {view === "home" && <span className="absolute -left-[13px] h-10 w-1 rounded-r-full bg-white" />}
       </button>
-      <div className="h-0.5 w-8 rounded bg-white/10" />
+      <div className="h-0.5 w-8 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       {ordered.map((s) => (
         <button
           key={s.id}
@@ -52,10 +64,10 @@ export function ServerRail({
           ])}
         >
           {s.iconUrl ? (
-            <div className="group relative flex items-center">
+            <div className="group relative flex items-center transition-transform duration-200 hover:scale-[1.04] active:scale-95">
               <div
                 className={cn(
-                  "absolute -left-4 w-1 rounded-r-full bg-white transition-all",
+                  "absolute -left-4 w-1 rounded-r-full bg-gradient-to-b from-speakit-blurple to-speakit-accent transition-all duration-200",
                   activeServerId === s.id ? "h-10" : "h-0 group-hover:h-5"
                 )}
               />
@@ -65,8 +77,8 @@ export function ServerRail({
                 loading="lazy"
                 decoding="async"
                 className={cn(
-                  "h-12 w-12 object-cover transition-all",
-                  activeServerId === s.id ? "rounded-2xl" : "rounded-full group-hover:rounded-2xl"
+                  "h-12 w-12 object-cover shadow-card ring-2 ring-white/10 transition-all duration-200",
+                  activeServerId === s.id ? "rounded-2xl shadow-glow" : "rounded-full group-hover:rounded-2xl"
                 )}
               />
             </div>
@@ -78,21 +90,21 @@ export function ServerRail({
       <button
         onClick={onAdd}
         title="Create server"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-speakit-sidebar text-speakit-green transition-all hover:rounded-2xl hover:bg-speakit-green hover:text-white"
+        className="group flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.06] text-emerald-300 ring-1 ring-white/10 transition-all duration-200 hover:scale-[1.05] hover:rounded-2xl hover:bg-emerald-500 hover:text-white hover:shadow-glow active:scale-95"
       >
         <Plus size={24} />
       </button>
       <button
         onClick={onJoin}
         title="Join with invite link"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-speakit-sidebar text-speakit-green transition-all hover:rounded-2xl hover:bg-speakit-green hover:text-white"
+        className="group flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.06] text-emerald-300 ring-1 ring-white/10 transition-all duration-200 hover:scale-[1.05] hover:rounded-2xl hover:bg-emerald-500 hover:text-white active:scale-95"
       >
         <Link2 size={20} />
       </button>
       <button
         onClick={onBrowse}
         title="Browse public servers"
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-speakit-sidebar text-speakit-green transition-all hover:rounded-2xl hover:bg-speakit-green hover:text-white"
+        className="group flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.06] text-emerald-300 ring-1 ring-white/10 transition-all duration-200 hover:scale-[1.05] hover:rounded-2xl hover:bg-emerald-500 hover:text-white active:scale-95"
       >
         <Compass size={22} />
       </button>

@@ -72,7 +72,7 @@ export const MessageItem = memo(function MessageItem({
   return (
     <div
       id={`msg-${msg.id}`}
-      className={`group relative flex scroll-mt-16 gap-2 px-3 py-1.5 hover:bg-black/20 sm:gap-3 sm:px-4 ${compact ? "py-0.5" : "py-1.5"}`}
+      className={`group relative mx-2 flex scroll-mt-16 gap-2.5 rounded-2xl px-3 py-1.5 transition-colors duration-150 hover:bg-white/[0.045] sm:gap-3 sm:px-3.5 ${compact ? "py-0.5" : "py-1.5"}`}
       style={{ paddingTop: msgPad, paddingBottom: msgPad }}
       {...ctxProps(() => [
         { type: "item" as const, label: "Reply", onClick: () => onReply(msg) },
@@ -84,52 +84,52 @@ export const MessageItem = memo(function MessageItem({
         { type: "item" as const, label: "Delete Message", danger: true, onClick: () => onDelete(msg) },
       ])}
     >
-      <button onClick={() => openProfile(msg.author.id)} title="View profile" className={`h-fit ${compact ? "hidden" : ""} msg-cozy-only`}>
+      <button onClick={() => openProfile(msg.author.id)} title="View profile" className={`h-fit transition hover:scale-105 ${compact ? "hidden" : ""} msg-cozy-only`}>
         <Avatar name={msg.author.displayName} color={msg.author.avatarColor} src={msg.author.avatarUrl || undefined} size={40} />
       </button>
       <div className="min-w-0 flex-1">
         {msg.replyTo && (
-          <div className="mb-0.5 flex items-center gap-1 text-xs text-speakit-muted">
-            <Reply size={12} />
-            <span className="font-semibold">{msg.replyTo.author.displayName}</span>
+          <div className="mb-1 flex items-center gap-1.5 rounded-lg bg-white/[0.04] px-2 py-1 text-xs text-speakit-muted ring-1 ring-white/[0.06]">
+            <Reply size={12} className="shrink-0 text-speakit-accent" />
+            <span className="shrink-0 font-bold text-speakit-text">{msg.replyTo.author.displayName}</span>
             <span className="truncate opacity-80">{replyPreview || <i>attachment</i>}</span>
           </div>
         )}
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           <button
             onClick={() => openProfile(msg.author.id)}
-            className="flex min-w-0 max-w-full items-center gap-1 truncate text-sm font-semibold text-white hover:underline"
+            className="flex min-w-0 max-w-full items-center gap-1.5 truncate text-[15px] font-bold tracking-tight text-white hover:underline"
             style={authorColor ? { color: authorColor } : undefined}
           >
             <span className="truncate">{msg.author.displayName}</span>
             {msg.author.isBot && <BotTag />}
           </button>
-          <span className="shrink-0 text-[11px] text-speakit-muted">@{msg.author.username}{showTimestamps ? ` • ${formatTime(msg.createdAt)}` : ""}</span>
-          {msg.edited && <span className="text-[10px] text-speakit-muted">(edited)</span>}
-          {msg.pinned && <span title="Pinned" className="text-[10px] text-yellow-400">📌</span>}
-          {msg.tempId && <span className="text-[10px] text-speakit-muted">sending…</span>}
+          <span className="shrink-0 text-[11px] font-medium text-speakit-muted/70">@{msg.author.username}{showTimestamps ? ` • ${formatTime(msg.createdAt)}` : ""}</span>
+          {msg.edited && <span className="text-[10px] italic text-speakit-muted/70">(edited)</span>}
+          {msg.pinned && <span title="Pinned" className="rounded-md bg-amber-400/15 px-1.5 py-0.5 text-[10px] ring-1 ring-amber-400/25">📌</span>}
+          {msg.tempId && <span className="flex items-center gap-1 text-[10px] text-speakit-muted"><span className="h-1 w-1 animate-pulse rounded-full bg-speakit-muted" />sending…</span>}
         </div>
         {showBody && (
-          <div className="break-words text-[15px] text-speakit-text">
+          <div className="mt-0.5 break-words text-[15px] leading-[1.55] text-speakit-text">
             <MarkdownContent text={msg.content} resolveEmoji={resolveEmoji} />
           </div>
         )}
         {msg.attachments.length > 0 && (
-          <div className="mt-1.5 flex flex-col gap-2">
+          <div className="mt-2 flex flex-col gap-2">
             <div className="flex flex-wrap gap-2">
               {msg.attachments.filter((a) => !a.mime.startsWith("audio/")).map((a) => (
-                <a key={a.url} href={a.url} target="_blank" rel="noreferrer" title={a.name}>
-                  <img src={a.url} alt={a.name} loading="lazy" decoding="async" className="max-h-64 max-w-full rounded-lg object-cover hover:opacity-90 sm:max-w-sm" />
+                <a key={a.url} href={a.url} target="_blank" rel="noreferrer" title={a.name} className="overflow-hidden rounded-2xl ring-1 ring-white/10 transition hover:ring-white/25">
+                  <img src={a.url} alt={a.name} loading="lazy" decoding="async" className="max-h-64 max-w-full object-cover transition duration-300 hover:scale-[1.01] sm:max-w-sm" />
                 </a>
               ))}
             </div>
             {msg.attachments.filter((a) => a.mime.startsWith("audio/")).map((a) => (
-              <audio key={a.url} src={a.url} controls preload="metadata" className="h-9 w-full max-w-sm" />
+              <audio key={a.url} src={a.url} controls preload="metadata" className="h-9 w-full max-w-sm rounded-full" />
             ))}
           </div>
         )}
         {msg.reactions.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {msg.reactions.map((r) => {
               const custom = /^:([a-z0-9_]{2,32}):$/.exec(r.emoji);
               const url = custom ? emojiUrlFor(custom[1], channelServerId, byServer, myEmojis) : null;
@@ -138,13 +138,13 @@ export const MessageItem = memo(function MessageItem({
                   key={r.emoji}
                   onClick={() => onReact(msg, r.emoji)}
                   className={cn(
-                    "flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs",
-                    r.me ? "border-speakit-blurple bg-speakit-blurple/30" : "border-white/10 bg-white/5 hover:border-white/20"
+                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-all hover:scale-105 active:scale-95",
+                    r.me ? "bg-speakit-blurple/25 text-white shadow-glow ring-1 ring-speakit-blurple/50" : "bg-white/[0.06] ring-1 ring-white/10 hover:bg-white/[0.1] hover:ring-white/20"
                   )}
                   title={r.users.join(", ")}
                 >
                   {url ? <img src={url} alt={r.emoji} className="h-4 w-4 object-contain" /> : <span>{r.emoji}</span>}
-                  <span className="font-semibold">{r.count}</span>
+                  <span className="font-extrabold tabular-nums">{r.count}</span>
                 </button>
               );
             })}
@@ -152,18 +152,18 @@ export const MessageItem = memo(function MessageItem({
         )}
       </div>
 
-      <div className="absolute -top-2 right-4 hidden items-center gap-0.5 rounded-md bg-[#2b2d31] p-0.5 shadow-lg group-hover:flex">
-        <button title="React" onClick={() => setShowEmoji((v) => !v)} className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-yellow-400"><Smile size={15} /></button>
-        <button title={msg.pinned ? "Unpin" : "Pin"} onClick={() => onPin(msg)} className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-yellow-400"><Pin size={15} /></button>
-        <button title="Reply" onClick={() => onReply(msg)} className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-white"><Reply size={15} /></button>
-        {isMine && <button title="Edit" onClick={() => onEdit(msg)} className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-white"><Pencil size={15} /></button>}
-        <button title="Delete" onClick={() => onDelete(msg)} className="rounded p-1.5 text-speakit-muted hover:bg-white/10 hover:text-red-400"><Trash2 size={15} /></button>
+      <div className="absolute -top-3 right-4 hidden items-center gap-0.5 rounded-full border border-white/10 bg-[#17171f]/95 p-1 shadow-pop backdrop-blur-xl group-hover:flex">
+        <button title="React" onClick={() => setShowEmoji((v) => !v)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-speakit-blurple/25 hover:text-amber-300"><Smile size={15} /></button>
+        <button title={msg.pinned ? "Unpin" : "Pin"} onClick={() => onPin(msg)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-speakit-blurple/25 hover:text-amber-300"><Pin size={15} /></button>
+        <button title="Reply" onClick={() => onReply(msg)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-speakit-blurple/25 hover:text-white"><Reply size={15} /></button>
+        {isMine && <button title="Edit" onClick={() => onEdit(msg)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-speakit-blurple/25 hover:text-white"><Pencil size={15} /></button>}
+        <button title="Delete" onClick={() => onDelete(msg)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-rose-500/25 hover:text-rose-300"><Trash2 size={15} /></button>
       </div>
 
       {showEmoji && (
-        <div className="absolute right-4 top-8 z-10 flex gap-1 rounded-md bg-[#1e1f22] p-1.5 shadow-xl">
+        <div className="menu-pop absolute right-4 top-8 z-10 flex gap-1 rounded-2xl border border-white/10 bg-[#17171f]/95 p-1.5 shadow-pop backdrop-blur-xl">
           {QUICK_EMOJIS.map((e) => (
-            <button key={e} onClick={() => { onReact(msg, e); setShowEmoji(false); }} className="rounded p-1 text-lg hover:bg-white/10">{e}</button>
+            <button key={e} onClick={() => { onReact(msg, e); setShowEmoji(false); }} className="rounded-xl p-1.5 text-lg transition hover:scale-125 hover:bg-white/10">{e}</button>
           ))}
         </div>
       )}

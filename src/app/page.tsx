@@ -322,10 +322,15 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#1e1f22]">
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 animate-pulse items-center justify-center rounded-2xl bg-speakit-blurple text-3xl font-black text-white">S</div>
-          <div className="text-sm text-speakit-muted">Loading Speakit…</div>
+      <div className="flex h-screen items-center justify-center bg-speakit-bg">
+        <div className="animate-fade-up text-center">
+          <div className="brand-gradient mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl text-3xl font-black text-white shadow-glow">S</div>
+          <div className="flex items-center justify-center gap-1.5 text-sm text-speakit-muted">
+            <span className="typing-dot h-1.5 w-1.5 rounded-full bg-speakit-blurple" />
+            <span className="typing-dot h-1.5 w-1.5 rounded-full bg-speakit-blurple" />
+            <span className="typing-dot h-1.5 w-1.5 rounded-full bg-speakit-blurple" />
+            <span className="ml-1">Loading Speakit…</span>
+          </div>
         </div>
       </div>
     );
@@ -394,36 +399,36 @@ export default function HomePage() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top status bar */}
-        <div className="flex h-9 items-center gap-2 bg-[#1e1f22] px-2 text-[11px] text-speakit-muted sm:px-3">
-          <button onClick={() => setMobileNav(true)} className="rounded p-1.5 hover:bg-white/10 hover:text-white sm:hidden" title="Servers & channels">
+        <div className="flex h-12 items-center gap-2 border-b border-white/[0.06] bg-speakit-rail/80 px-2 text-[11px] text-speakit-muted backdrop-blur-xl sm:px-3">
+          <button onClick={() => setMobileNav(true)} className="rounded-xl p-2 transition hover:bg-white/10 hover:text-white sm:hidden" title="Servers & channels">
             <Menu size={16} />
           </button>
-          <span className="hidden items-center sm:flex">
-            <span className={`mr-1 inline-block h-2 w-2 rounded-full ${socketStatus === "live" ? "bg-speakit-green" : "bg-yellow-500"}`} />
-            {socketStatus === "live" ? "Connected" : "Connecting…"}
+          <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 sm:flex">
+            <span className={`inline-block h-2 w-2 rounded-full ${socketStatus === "live" ? "animate-pulse bg-emerald-400 shadow-[0_0_8px_1px_rgb(52_211_153/0.8)]" : "bg-amber-400"}`} />
+            <span className="font-semibold">{socketStatus === "live" ? "Connected" : "Connecting…"}</span>
           </span>
           {/* Discord-style global search */}
           <button
             onClick={() => setShowQuick(true)}
-            className="topbar-search mx-auto flex w-full max-w-md flex-1 items-center gap-2 rounded-md bg-black/30 px-3 py-1.5 text-left text-xs text-speakit-muted hover:bg-black/50 hover:text-speakit-text sm:mx-2"
+            className="topbar-search mx-auto flex w-full max-w-md flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-1.5 text-left text-xs text-speakit-muted shadow-inner transition hover:border-speakit-blurple/40 hover:bg-white/[0.08] hover:text-speakit-text hover:shadow-glow sm:mx-2"
             title="Quick Switcher (Ctrl+K)"
           >
-            <Search size={12} className="shrink-0" />
-            <span className="flex-1 truncate">Find or start a conversation</span>
-            <kbd className="hidden shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[10px] sm:block">Ctrl K</kbd>
+            <Search size={13} className="shrink-0" />
+            <span className="flex-1 truncate font-medium">Find or start a conversation</span>
+            <kbd className="hidden shrink-0 rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-bold sm:block">Ctrl K</kbd>
           </button>
-          <span className="flex shrink-0 items-center gap-2">
+          <span className="flex shrink-0 items-center gap-1">
             <span className="hidden md:block"><InstallCompact /></span>
             <NotifyBell />
-            <button onClick={toggleTheme} className="flex items-center gap-1 hover:text-white" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-              {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
+            <button onClick={toggleTheme} className="rounded-lg p-1.5 transition hover:bg-white/10 hover:text-white" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
             </button>
             {view === "server" && serverDetail && (
-              <button onClick={() => void handleLeaveServer()} className="hidden hover:text-red-400 lg:block" title="Leave server">
+              <button onClick={() => void handleLeaveServer()} className="hidden rounded-lg px-2 py-1.5 font-semibold transition hover:bg-rose-500/20 hover:text-rose-300 lg:block" title="Leave server">
                 Leave
               </button>
             )}
-            <button onClick={() => void handleLogout()} className="hidden items-center gap-1 hover:text-white sm:flex" title="Log out">
+            <button onClick={() => void handleLogout()} className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] py-1 pl-1 pr-2.5 font-semibold transition hover:border-white/20 hover:bg-white/10 hover:text-white sm:flex" title="Log out">
               <LogOut size={12} /> @{user.username}
             </button>
           </span>
@@ -440,11 +445,12 @@ export default function HomePage() {
             activeChannelId ? (
               <ChatView key={activeChannelId} channelId={activeChannelId} />
             ) : (
-              <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-speakit-muted">
-                <div>
-                  <div className="mb-2 text-lg font-bold text-white">No channels yet</div>
-                  <div className="mb-3">Create your first channel to start talking — just like Discord.</div>
-                  <button onClick={() => openCreateChannel("TEXT")} className="rounded-md bg-speakit-blurple px-4 py-2 text-sm font-semibold text-white">Create Channel</button>
+              <div className="flex flex-1 items-center justify-center p-6 text-center">
+                <div className="animate-fade-up max-w-sm">
+                  <div className="brand-gradient mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl text-2xl text-white shadow-glow">#</div>
+                  <div className="mb-1 text-lg font-extrabold tracking-tight text-white">No channels yet</div>
+                  <div className="mb-4 text-sm text-speakit-muted">Create your first channel to start talking.</div>
+                  <button onClick={() => openCreateChannel("TEXT")} className="brand-gradient rounded-full px-6 py-2.5 text-sm font-extrabold text-white shadow-glow transition hover:brightness-110 active:scale-95">Create Channel</button>
                 </div>
               </div>
             )
@@ -496,7 +502,7 @@ function InstallCompact() {
   return (
     <button
       onClick={() => void install()}
-      className="rounded bg-speakit-blurple/20 px-2 py-1 text-[11px] font-bold text-[#b5bdff] hover:bg-speakit-blurple hover:text-white"
+      className="brand-gradient rounded-full px-3 py-1 text-[11px] font-extrabold text-white shadow-glow transition hover:brightness-110"
       title="Install Speakit to your home screen"
     >
       Install
@@ -543,7 +549,7 @@ function NotifyBell() {  const [perm, setPerm] = useState<string>(typeof Notific
   return (
     <button
       onClick={() => void click()}
-      className="flex items-center gap-1 hover:text-white"
+      className="relative rounded-lg p-1.5 transition hover:bg-white/10 hover:text-white"
       title={
         perm === "granted"
           ? "Desktop pings ON (mentions while tab is hidden)"
@@ -552,7 +558,8 @@ function NotifyBell() {  const [perm, setPerm] = useState<string>(typeof Notific
             : "Enable desktop pings for @mentions"
       }
     >
-      {perm === "granted" ? <Bell size={12} /> : <BellOff size={12} />}
+      {perm === "granted" ? <Bell size={14} /> : <BellOff size={14} className="opacity-70" />}
+      {perm === "granted" && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />}
     </button>
   );
 }
@@ -570,50 +577,54 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-speakit-bg">
-      <div className="flex h-12 items-center gap-2 border-b border-black/30 px-3 sm:px-4">
-        <MessageCircle size={18} className="shrink-0 text-speakit-muted" />
-        <span className="hidden font-bold text-white sm:block">Friends</span>
-        <div className="flex gap-1">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-speakit-bg/80 px-3 backdrop-blur sm:px-4">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06] ring-1 ring-white/10">
+          <MessageCircle size={16} className="text-speakit-accent" />
+        </span>
+        <span className="hidden font-extrabold tracking-tight text-white sm:block">Friends</span>
+        <div className="flex gap-1 rounded-full border border-white/[0.06] bg-black/20 p-1">
           {(["online", "all", "pending"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded px-2 py-1 text-xs font-semibold capitalize ${tab === t ? "bg-white/10 text-white" : "text-speakit-muted hover:bg-white/5"}`}
+              className={`rounded-full px-3 py-1 text-xs font-bold capitalize transition-all ${tab === t ? "bg-white text-black shadow" : "text-speakit-muted hover:bg-white/10 hover:text-white"}`}
             >
               {t} {t === "pending" && pendingIn.length > 0 ? `(${pendingIn.length})` : t === "online" ? `(${online.length})` : ""}
             </button>
           ))}
         </div>
         <div className="flex-1" />
-        <button onClick={onAddFriend} className="hidden items-center gap-1 rounded bg-speakit-green px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1a8a4a] sm:flex">
+        <button onClick={onAddFriend} className="hidden items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 hover:shadow-emerald-400/30 active:scale-95 sm:flex">
           <UserPlus size={14} /> Add Friend
         </button>
-        <button onClick={onNewDM} className="flex items-center gap-1 rounded bg-white/10 px-2 py-1.5 text-xs font-semibold text-white hover:bg-white/20 sm:px-3">
+        <button onClick={onNewDM} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs font-bold text-white transition hover:bg-white/[0.12] sm:px-4">
           <Plus size={14} /> <span className="hidden sm:inline">New DM</span>
         </button>
       </div>
 
       <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mb-4 rounded-xl bg-speakit-blurple p-5 sm:p-6">
-          <h2 className="text-lg font-black text-white sm:text-xl">Hey {user?.displayName}, welcome to SpeakIt</h2>
-          <p className="mt-1 text-sm text-white/85">
-            Press <b>Ctrl K</b> to jump anywhere, type <b>@</b> to mention someone, <b>/</b> for bot commands, and open User Settings (gear, bottom-left) for themes and bots.
+        <div className="animate-fade-up relative mb-4 overflow-hidden rounded-3xl border border-white/10 p-6 shadow-pop sm:p-7" style={{ background: "linear-gradient(135deg,#4c1d95 0%,#6d28d9 30%,#6c6cf5 65%,#0ea5e9 130%)" }}>
+          <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/30 blur-3xl" />
+          <h2 className="relative text-xl font-black tracking-tight text-white sm:text-2xl">Hey {user?.displayName} 👋</h2>
+          <p className="relative mt-1.5 max-w-lg text-sm leading-relaxed text-white/85">
+            Press <kbd className="rounded-md bg-black/30 px-1.5 py-0.5 font-bold">Ctrl K</kbd> to jump anywhere, type <b>@</b> to mention someone, <b>/</b> for bot commands.
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={onAddFriend} className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-[#5865f2] hover:bg-white/90">Add friends</button>
-            <button onClick={onNewDM} className="rounded-md bg-black/30 px-3 py-1.5 text-xs font-bold text-white hover:bg-black/40">Start a DM</button>
+          <div className="relative mt-4 flex flex-wrap gap-2">
+            <button onClick={onAddFriend} className="rounded-full bg-white px-4 py-2 text-xs font-extrabold text-[#5b21b6] shadow-lg transition hover:scale-[1.03] hover:bg-white/95 active:scale-95">Add friends</button>
+            <button onClick={onNewDM} className="rounded-full bg-black/30 px-4 py-2 text-xs font-extrabold text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-black/45">Start a DM</button>
           </div>
         </div>
 
         <div className="mb-4"><InstallPrompt /></div>
 
         <div className="mb-3 flex items-center gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search friends" className="w-full rounded-md bg-black/30 px-3 py-1.5 text-sm text-white outline-none placeholder:text-speakit-muted focus:ring-2 focus:ring-speakit-blurple" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search friends" className="w-full rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white shadow-inner outline-none transition placeholder:text-speakit-muted/70 focus:border-speakit-blurple/60 focus:ring-2 focus:ring-speakit-blurple/30" />
         </div>
 
         {tab === "pending" ? (
-          <div className="space-y-1">
-            {pendingIn.length === 0 && pendingOut.length === 0 && <div className="rounded-lg bg-[#2b2d31] p-4 text-sm text-speakit-muted">No pending requests. New requests land here.</div>}
+          <div className="space-y-1.5">
+            {pendingIn.length === 0 && pendingOut.length === 0 && <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-center text-sm text-speakit-muted">No pending requests. New requests land here.</div>}
             {pendingIn.map((p) => (
               <PendingHomeRow key={p.id} id={p.id} displayName={p.user.displayName} username={p.user.username} incoming />
             ))}
@@ -623,27 +634,27 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
           </div>
         ) : (
           <>
-            <h3 className="mb-2 text-xs font-bold uppercase text-speakit-muted">{tab === "online" ? `Online — ${shown.length}` : `All friends — ${shown.length}`}</h3>
-            <div className="mb-6 space-y-1">
+            <h3 className="mb-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.1em] text-speakit-muted/80">{tab === "online" ? `Online — ${shown.length}` : `All friends — ${shown.length}`}</h3>
+            <div className="mb-6 space-y-1.5">
               {shown.map((f) => (
                 <FriendHomeRow key={f.id} f={f} />
               ))}
-              {shown.length === 0 && <div className="rounded-lg bg-[#2b2d31] p-4 text-sm text-speakit-muted">{tab === "online" ? "Nobody online right now." : "No friends yet — add someone to get started."}</div>}
+              {shown.length === 0 && <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-center text-sm text-speakit-muted">{tab === "online" ? "Nobody online right now." : "No friends yet — add someone to get started."}</div>}
             </div>
 
-            <h3 className="mb-2 text-xs font-bold uppercase text-speakit-muted">Recent conversations</h3>
+            <h3 className="mb-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.1em] text-speakit-muted/80">Recent conversations</h3>
             {conversations.length === 0 && (
-              <div className="mb-6 rounded-lg bg-[#2b2d31] p-4 text-sm text-speakit-muted">
+              <div className="mb-6 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-center text-sm text-speakit-muted">
                 No DMs yet. Add a friend, then start a direct message.
               </div>
             )}
-            <div className="mb-6 space-y-1">
+            <div className="mb-6 space-y-1.5">
               {conversations.slice(0, 8).map((c) => (
-                <div key={c.id} className="group flex w-full items-center gap-3 rounded-lg bg-[#2b2d31] px-3 py-2.5 text-left hover:bg-[#35373c]">
+                <div key={c.id} className="group flex w-full items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-left shadow-card transition hover:border-white/[0.12] hover:bg-white/[0.06]">
                   <button onClick={() => onOpenDM(c.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                    <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={36} status={c.other.status} />
+                    <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={40} status={c.other.status} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-white">{c.other.displayName}</div>
+                      <div className="text-sm font-bold text-white">{c.other.displayName}</div>
                       <div className="truncate text-xs text-speakit-muted">{previewForMessage(c.lastMessage, c.attachments ?? []) || "No messages yet"}</div>
                     </div>
                   </button>
@@ -670,10 +681,10 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
 
 function FriendHomeRow({ f }: { f: { id: string; friendshipId: string; displayName: string; username: string; avatarColor: string; avatarUrl?: string; status: string } }) {
   return (
-    <div className="group flex items-center gap-3 rounded-lg bg-[#2b2d31] px-3 py-2.5">
-      <Avatar name={f.displayName} color={f.avatarColor} src={f.avatarUrl || undefined} size={36} status={f.status} />
+    <div className="group flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 transition hover:border-white/[0.12] hover:bg-white/[0.06]">
+      <Avatar name={f.displayName} color={f.avatarColor} src={f.avatarUrl || undefined} size={40} status={f.status} />
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-white">{f.displayName}</div>
+        <div className="text-sm font-bold text-white">{f.displayName}</div>
         <div className="text-xs text-speakit-muted">@{f.username}</div>
       </div>
       <button
@@ -705,18 +716,18 @@ function PendingHomeRow({ id, displayName, username, incoming }: { id: string; d
     await useAppStore.getState().refreshFriends();
   };
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-[#2b2d31] px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-white">{displayName}</div>
+        <div className="text-sm font-bold text-white">{displayName}</div>
         <div className="text-xs text-speakit-muted">@{username}</div>
       </div>
       {incoming ? (
         <div className="flex gap-1.5">
-          <button onClick={() => void act("accept")} className="rounded bg-speakit-green px-3 py-1 text-xs font-semibold text-white">Accept</button>
-          <button onClick={() => void act("decline")} className="rounded bg-white/10 px-3 py-1 text-xs text-white">Decline</button>
+          <button onClick={() => void act("accept")} className="rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-95">Accept</button>
+          <button onClick={() => void act("decline")} className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-1.5 text-xs font-bold text-white transition hover:bg-white/[0.12]">Decline</button>
         </div>
       ) : (
-        <button onClick={() => void act("cancel")} className="rounded bg-white/10 px-3 py-1 text-xs text-white">Cancel</button>
+        <button onClick={() => void act("cancel")} className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-1.5 text-xs font-bold text-white transition hover:bg-white/[0.12]">Cancel</button>
       )}
     </div>
   );

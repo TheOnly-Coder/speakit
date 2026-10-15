@@ -24,9 +24,9 @@ export function MemberList({
   return (
     <div>
       {groups.map((g) => (
-        <div key={g.key} className="mb-3">
-          <div className="mb-1 px-2 text-[11px] font-bold uppercase text-speakit-muted">
-            {g.name} - {g.members.length}
+        <div key={g.key} className="mb-4">
+          <div className="mb-1.5 px-2 text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted/70">
+            {g.name} · {g.members.length}
           </div>
           {g.members.map((m) => {
             const color = displayColorFor(m, roles);
@@ -36,7 +36,7 @@ export function MemberList({
                 key={m.id}
                 onClick={() => openProfile(m.id)}
                 title={`@${m.username} — right-click for options`}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-white/5"
+                className="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/[0.06]"
                 {...ctxProps(() => [
                   { type: "header" as const, label: m.displayName },
                   { type: "item" as const, label: "View Profile", onClick: () => openProfile(m.id) },

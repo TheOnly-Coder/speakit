@@ -80,6 +80,7 @@ export function ChannelSidebar({
   const renderChannel = (ch: ChannelItem) => {
     const muted = mutedChannels.includes(ch.id);
     const pings = mentionCounts[ch.id] ?? 0;
+    const active = activeChannelId === ch.id;
     return (
       <button
         key={ch.id}
@@ -89,15 +90,22 @@ export function ChannelSidebar({
         }}
         {...ctxProps(() => channelMenu(ch))}
         className={cn(
-          "group mb-0.5 flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-sm",
-          activeChannelId === ch.id ? "bg-white/10 text-white" : "text-speakit-muted hover:bg-white/5 hover:text-speakit-text"
+          "group mb-0.5 flex w-full items-center gap-2 rounded-xl px-2.5 py-[7px] text-left text-[14px] transition-all duration-150",
+          active
+            ? "bg-gradient-to-r from-speakit-blurple/25 to-speakit-accent/10 text-white shadow-card ring-1 ring-white/10"
+            : "text-speakit-muted hover:bg-white/[0.06] hover:text-speakit-text active:bg-white/[0.09]"
         )}
       >
-        {ch.type === "VOICE" ? <Volume2 size={16} className="shrink-0 opacity-60" /> : <Hash size={16} className="shrink-0 opacity-60" />}
-        <span className="flex-1 truncate">{ch.name}</span>
-        {pings > 0 && <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">@{pings}</span>}
+        <span className={cn(
+          "flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors",
+          active ? "bg-speakit-blurple/30 text-white" : "bg-white/[0.04] text-speakit-muted group-hover:text-speakit-text"
+        )}>
+          {ch.type === "VOICE" ? <Volume2 size={13} className="opacity-90" /> : <Hash size={13} className="opacity-90" />}
+        </span>
+        <span className={cn("flex-1 truncate", active ? "font-semibold" : "font-medium")}>{ch.name}</span>
+        {pings > 0 && <span className="rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white shadow">@{pings}</span>}
         {muted && <BellOff size={12} className="shrink-0 opacity-60" />}
-        {ch.type === "VOICE" && voice.channelId === ch.id && <span className="h-2 w-2 shrink-0 rounded-full bg-speakit-green" />}
+        {ch.type === "VOICE" && voice.channelId === ch.id && <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgb(52_211_153/0.6)]" />}
         <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
           <span
             role="button"
@@ -136,7 +144,7 @@ export function ChannelSidebar({
   };
 
   return (
-    <div className="flex w-[var(--speakit-sidebar-w)] max-w-[calc(92vw-var(--speakit-rail-w))] shrink-0 flex-col bg-speakit-sidebar">
+    <div className="flex w-[var(--speakit-sidebar-w)] max-w-[calc(92vw-var(--speakit-rail-w))] shrink-0 flex-col border-r border-white/[0.06] bg-speakit-sidebar/95 backdrop-blur">
       <ServerMenu
         onInvite={onInvite}
         onOpenServerSettings={onOpenServerSettings}
@@ -147,26 +155,26 @@ export function ChannelSidebar({
           window.dispatchEvent(new CustomEvent("speakit:leave-server"));
         }}
       />
-      <div className="flex items-center gap-1 px-4 pt-1">
-        <button title="Toggle members" onClick={() => setShowMembers(!showMembers)} className="rounded p-1 text-speakit-muted hover:text-white">
+      <div className="flex items-center gap-1 px-4 pt-1.5">
+        <button title="Toggle members" onClick={() => setShowMembers(!showMembers)} className="rounded-lg p-1.5 text-speakit-muted transition hover:bg-white/10 hover:text-white">
           <Users size={14} />
         </button>
-        <button title="Invite" onClick={onInvite} className="rounded p-1 text-speakit-muted hover:text-white">
+        <button title="Invite" onClick={onInvite} className="rounded-lg p-1.5 text-speakit-muted transition hover:bg-white/10 hover:text-white">
           <Plus size={16} />
         </button>
-        <span className="ml-auto text-[10px] text-speakit-muted">Right-click for more</span>
+        <span className="ml-auto text-[10px] font-medium text-speakit-muted/70">Right-click for more</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2.5">
         {serverDetail.categories.map((cat) => {
           const inCat = textChannels.filter((c) => c.categoryId === cat.id);
           const inCatVoice = voiceChannels.filter((c) => c.categoryId === cat.id);
           if (inCat.length === 0 && inCatVoice.length === 0) return null;
           return (
-            <div key={cat.id} className="mb-2">
-              <div className="mb-1 flex items-center justify-between px-2">
-                <span className="text-[11px] font-bold uppercase text-speakit-muted">{cat.name}</span>
-                {canManage && <button onClick={() => onCreateChannel("TEXT", cat.id)} className="text-speakit-muted hover:text-white" title={`New channel in ${cat.name}`}><Plus size={14} /></button>}
+            <div key={cat.id} className="mb-3">
+              <div className="mb-1.5 flex items-center justify-between px-2">
+                <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted/80">{cat.name}</span>
+                {canManage && <button onClick={() => onCreateChannel("TEXT", cat.id)} className="rounded-md p-0.5 text-speakit-muted transition hover:bg-white/10 hover:text-white" title={`New channel in ${cat.name}`}><Plus size={14} /></button>}
               </div>
               {inCat.map(renderChannel)}
               {inCatVoice.map((ch) => (
@@ -190,18 +198,18 @@ export function ChannelSidebar({
         })}
 
         {(uncategorized.length > 0 || (canManage && serverDetail.categories.length === 0)) && (
-          <div className="mb-1 flex items-center justify-between px-2">
-            <span className="text-[11px] font-bold uppercase text-speakit-muted">
+          <div className="mb-1.5 flex items-center justify-between px-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted/80">
               {serverDetail.categories.length > 0 ? "No category" : "Text Channels"}
             </span>
-            {canManage && <button onClick={() => onCreateChannel("TEXT", null)} className="text-speakit-muted hover:text-white"><Plus size={14} /></button>}
+            {canManage && <button onClick={() => onCreateChannel("TEXT", null)} className="rounded-md p-0.5 text-speakit-muted transition hover:bg-white/10 hover:text-white"><Plus size={14} /></button>}
           </div>
         )}
         {uncategorized.map(renderChannel)}
 
-        <div className="mb-1 mt-4 flex items-center justify-between px-2">
-          <span className="text-[11px] font-bold uppercase text-speakit-muted">Voice Channels</span>
-          {canManage && <button onClick={() => onCreateChannel("VOICE", null)} className="text-speakit-muted hover:text-white"><Plus size={14} /></button>}
+        <div className="mb-1.5 mt-4 flex items-center justify-between px-2">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted/80">Voice Channels</span>
+          {canManage && <button onClick={() => onCreateChannel("VOICE", null)} className="rounded-md p-0.5 text-speakit-muted transition hover:bg-white/10 hover:text-white"><Plus size={14} /></button>}
         </div>
         {voiceChannels.filter((c) => !c.categoryId).map((ch) => (
           <div key={ch.id}>
@@ -227,12 +235,14 @@ export function ChannelSidebar({
       />
 
       {voice.channelId && (
-        <div className="border-t border-black/30 bg-[#232428] px-3 py-2">
+        <div className="border-t border-white/[0.06] bg-black/30 px-3 py-2 backdrop-blur">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase text-speakit-green">Voice Connected</span>
+            <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Voice Connected
+            </span>
             <button
               onClick={() => voiceActions.leave()}
-              className="flex items-center gap-1 rounded bg-red-500/20 px-2 py-1 text-xs text-red-400 hover:bg-red-500/30"
+              className="flex items-center gap-1 rounded-lg bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-300 ring-1 ring-rose-500/25 transition hover:bg-rose-500 hover:text-white"
             >
               <PhoneOff size={12} /> Leave
             </button>

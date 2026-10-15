@@ -23,13 +23,17 @@ export function Avatar({
         <img
           src={src}
           alt={name}
-          className="h-full w-full rounded-full object-cover"
+          className="h-full w-full rounded-full object-cover ring-2 ring-white/10"
           style={{ width: size, height: size }}
         />
       ) : (
         <div
-          className="flex h-full w-full items-center justify-center rounded-full font-semibold text-white"
-          style={{ backgroundColor: color || "#5865f2", fontSize: size * 0.38 }}
+          className="flex h-full w-full items-center justify-center rounded-full font-bold text-white ring-2 ring-white/10"
+          style={{
+            background: `linear-gradient(135deg, ${color || "#6c6cf5"} 0%, ${color || "#6c6cf5"}cc 55%, #1a1a24 140%)`,
+            fontSize: size * 0.36,
+            letterSpacing: "-0.02em",
+          }}
         >
           {initials(name || "?")}
         </div>
@@ -37,11 +41,11 @@ export function Avatar({
       {status && (
         <span
           className={cn(
-            "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-speakit-sidebar",
+            "absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-[3px] border-speakit-sidebar ring-1 ring-black/40",
             status === "online" && "bg-speakit-green",
-            status === "idle" && "bg-yellow-500",
-            status === "dnd" && "bg-red-500",
-            (status === "offline" || status === "invisible") && "bg-gray-500"
+            status === "idle" && "bg-amber-400",
+            status === "dnd" && "bg-rose-500",
+            (status === "offline" || status === "invisible") && "bg-zinc-500"
           )}
         />
       )}
@@ -54,7 +58,7 @@ export function BotTag({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded bg-speakit-blurple px-1 py-px text-[10px] font-bold uppercase leading-tight text-white",
+        "brand-gradient inline-flex shrink-0 items-center rounded-md px-1.5 py-px text-[10px] font-extrabold uppercase leading-tight tracking-wide text-white shadow-sm",
         className
       )}
     >
@@ -68,16 +72,20 @@ export function ServerIcon({ name, color, active, unread }: { name: string; colo
     <div className="group relative flex items-center">
       <div
         className={cn(
-          "absolute -left-4 w-1 rounded-r-full bg-white transition-all",
-          active ? "h-10" : unread ? "h-2 group-hover:h-5" : "h-0 group-hover:h-5"
+          "absolute -left-[13px] w-1 rounded-r-full bg-gradient-to-b from-speakit-blurple to-speakit-accent transition-all duration-200",
+          active ? "h-10" : unread ? "h-2.5 group-hover:h-5" : "h-0 group-hover:h-5"
         )}
       />
       <div
         className={cn(
-          "flex h-12 w-12 items-center justify-center font-bold text-white transition-all",
-          active ? "rounded-2xl" : "rounded-full group-hover:rounded-2xl"
+          "flex h-12 w-12 items-center justify-center font-extrabold text-white transition-all duration-200 group-hover:scale-[1.04] group-active:scale-95",
+          active
+            ? "rounded-2xl shadow-glow"
+            : "rounded-[999px] shadow-card group-hover:rounded-2xl group-hover:shadow-pop"
         )}
-        style={{ backgroundColor: color }}
+        style={{
+          background: `linear-gradient(135deg, ${color} 0%, ${color}bb 60%, #17171f 160%)`,
+        }}
       >
         {initials(name)}
       </div>

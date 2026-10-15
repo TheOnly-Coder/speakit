@@ -296,14 +296,16 @@ export function ChatView({ channelId }: { channelId: string }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-speakit-bg">
-      <div className="flex h-12 min-w-0 items-center gap-2 border-b border-black/30 px-3 shadow-sm sm:px-4">
-        <Hash size={18} className="shrink-0 text-speakit-muted" />
-        <span className="truncate font-bold text-white">{channel.name}</span>
-        {channel.topic && <span className="hidden truncate text-xs text-speakit-muted md:block">| {channel.topic}</span>}
+      <div className="flex h-12 min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-speakit-bg/80 px-3 shadow-sm backdrop-blur-xl sm:px-4">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-speakit-blurple/30 to-speakit-accent/20 ring-1 ring-white/10">
+          <Hash size={15} className="text-speakit-accent" />
+        </span>
+        <span className="truncate text-[15px] font-extrabold tracking-tight text-white">{channel.name}</span>
+        {channel.topic && <span className="hidden max-w-md truncate text-xs text-speakit-muted/80 md:block">| {channel.topic}</span>}
         <div className="flex-1" />
         <PinCount count={list.filter((m) => m.pinned).length} onClick={() => void openPins()} />
-        <button onClick={() => setShowMembers(!showMembers)} className="rounded p-1.5 text-speakit-muted hover:text-white" title="Toggle members">
-          <Users size={18} />
+        <button onClick={() => setShowMembers(!showMembers)} className={`rounded-lg p-2 transition ${showMembers ? "bg-speakit-blurple/25 text-white" : "text-speakit-muted hover:bg-white/10 hover:text-white"}`} title="Toggle members">
+          <Users size={17} />
         </button>
       </div>
       <PinsModal open={showPins} onClose={() => setShowPins(false)} pins={pins} channelName={channel.name} onJump={jumpTo} onUnpin={unpin} />
@@ -311,12 +313,26 @@ export function ChatView({ channelId }: { channelId: string }) {
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="msg-list smooth-scroll flex-1 overflow-y-auto py-3">
-            {loading && <div className="px-4 text-sm text-speakit-muted">Loading messages…</div>}
+            {loading && (
+              <div className="space-y-3 px-4 py-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="skeleton h-10 w-10 shrink-0 rounded-full" />
+                    <div className="flex-1 space-y-2 py-1">
+                      <div className="skeleton h-3 w-40 rounded-full" />
+                      <div className="skeleton h-3 rounded-full" style={{ width: `${70 - i * 12}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             {!loading && list.length === 0 && (
-              <div className="px-4 py-8 text-center">
-                <Hash size={48} className="mx-auto mb-3 text-white/20" />
-                <h3 className="text-lg font-bold text-white">Welcome to #{channel.name}!</h3>
-                <p className="text-sm text-speakit-muted">This is the start of the #{channel.name} channel.</p>
+              <div className="animate-fade-up px-4 py-10 text-center">
+                <div className="brand-gradient mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl shadow-glow">
+                  <Hash size={28} className="text-white" />
+                </div>
+                <h3 className="text-xl font-extrabold tracking-tight text-white">Welcome to #{channel.name}!</h3>
+                <p className="mx-auto mt-1 max-w-sm text-sm text-speakit-muted">This is the start of something great. Say hi and kick things off.</p>
               </div>
             )}
             {list.map((m) => (
@@ -325,8 +341,13 @@ export function ChatView({ channelId }: { channelId: string }) {
             <div ref={bottomRef} />
           </div>
           {typingList.length > 0 && (
-            <div className="px-4 pb-1 text-xs text-speakit-muted">
-              {typingList.map((t) => t.displayName).join(", ")} {typingList.length === 1 ? "is" : "are"} typing…
+            <div className="flex items-center gap-2 px-4 pb-1.5 text-xs font-medium text-speakit-muted">
+              <span className="flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-1 ring-1 ring-white/10">
+                <span className="typing-dot h-1 w-1 rounded-full bg-speakit-accent" />
+                <span className="typing-dot h-1 w-1 rounded-full bg-speakit-accent" />
+                <span className="typing-dot h-1 w-1 rounded-full bg-speakit-accent" />
+              </span>
+              <span className="truncate">{typingList.map((t) => t.displayName).join(", ")} {typingList.length === 1 ? "is" : "are"} typing…</span>
             </div>
           )}
           <MessageInput
@@ -342,7 +363,7 @@ export function ChatView({ channelId }: { channelId: string }) {
         </div>
 
         {showMembers && serverDetail && (
-          <div className="hidden w-60 overflow-y-auto bg-[#2b2d31] p-3 lg:block">
+          <div className="hidden w-60 shrink-0 overflow-y-auto border-l border-white/[0.06] bg-speakit-sidebar/60 p-3 backdrop-blur lg:block">
             <MemberList members={serverDetail.members} roles={serverDetail.roles} ownerId={serverDetail.ownerId} />
           </div>
         )}
@@ -438,36 +459,42 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-speakit-bg">
-      <div className="flex h-12 min-w-0 items-center gap-2 border-b border-black/30 px-3 sm:px-4">
-        <Volume2 size={18} className="shrink-0 text-speakit-muted" />
-        <span className="truncate font-bold text-white">{channelName}</span>
-        <span className="hidden shrink-0 text-xs text-speakit-muted sm:block">Voice channel</span>
+      <div className="flex h-12 min-w-0 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-speakit-bg/80 px-3 backdrop-blur-xl sm:px-4">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-500/25">
+          <Volume2 size={15} className="text-emerald-300" />
+        </span>
+        <span className="truncate text-[15px] font-extrabold tracking-tight text-white">{channelName}</span>
+        <span className="hidden shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-speakit-muted sm:block">Voice channel</span>
       </div>
       <div className="smooth-scroll flex flex-1 flex-col items-center justify-center gap-4 overflow-y-auto p-4 sm:p-8">
         {connectedElsewhere ? (
           <>
-            <Volume2 size={64} className="text-speakit-green/60" />
-            <h3 className="text-center text-xl font-bold text-white">You&apos;re in another voice channel</h3>
+            <span className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-500/15 ring-1 ring-emerald-500/25">
+              <Volume2 size={36} className="text-emerald-300" />
+            </span>
+            <h3 className="text-center text-xl font-extrabold tracking-tight text-white">You&apos;re in another voice channel</h3>
             <p className="max-w-md text-center text-sm text-speakit-muted">
               Voice stays connected while you browse. Switch to join {channelName} instead.
             </p>
             <button
               onClick={handleSwitch}
               disabled={switching}
-              className="rounded-md bg-speakit-blurple px-6 py-2.5 font-semibold text-white hover:bg-[#4752c4] disabled:opacity-50"
+              className="brand-gradient rounded-full px-8 py-3 font-extrabold text-white shadow-glow transition hover:brightness-110 active:scale-95 disabled:opacity-50"
             >
               {switching ? "Switching…" : `Switch to ${channelName}`}
             </button>
           </>
         ) : !isConnectedHere ? (
           <>
-            <Volume2 size={64} className="text-white/20" />
-            <h3 className="text-center text-xl font-bold text-white">Jump into voice!</h3>
+            <span className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/[0.05] ring-1 ring-white/10">
+              <Volume2 size={36} className="text-speakit-muted" />
+            </span>
+            <h3 className="text-center text-xl font-extrabold tracking-tight text-white">Jump into voice!</h3>
             <p className="max-w-md text-center text-sm text-speakit-muted">
               Voice channels are live. Your audio stays in this channel only. Allow mic access to talk — or join without a mic to just listen.
             </p>
             {voice.joinError && (
-              <div className="w-full max-w-md rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-center text-sm text-red-300">
+              <div className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-center text-sm text-rose-300">
                 {voice.joinError}
               </div>
             )}
@@ -475,7 +502,7 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
               <button
                 onClick={handleJoin}
                 disabled={joiningLocal || voice.joining}
-                className="rounded-md bg-speakit-green px-6 py-2.5 font-semibold text-white hover:bg-[#1a8a4a] disabled:opacity-50"
+                className="rounded-full bg-emerald-500 px-8 py-3 font-extrabold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-95 disabled:opacity-50"
               >
                 {joiningLocal || voice.joining ? "Connecting…" : "Join Voice"}
               </button>
@@ -485,7 +512,7 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                     voiceActions.leave();
                     setJoiningLocal(false);
                   }}
-                  className="rounded-md bg-white/10 px-4 py-2.5 text-sm text-white hover:bg-white/20"
+                  className="rounded-full border border-white/10 bg-white/[0.06] px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.12]"
                 >
                   Cancel
                 </button>
@@ -571,13 +598,13 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
             )}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
               <div
-                className="flex flex-col items-center gap-2 rounded-xl p-3 sm:p-5"
-                style={{ background: "linear-gradient(135deg, #5865f255, #2b2d31 70%)" }}
+                className="flex flex-col items-center gap-2 rounded-3xl border border-white/[0.06] p-3 shadow-card sm:p-5"
+                style={{ background: "linear-gradient(135deg, #6c6cf533, #17171f 70%)" }}
               >
-                <Avatar name="You" color="#5865f2" size={56} />
-                <span className="text-center text-sm font-semibold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
-                {voice.micBlocked && <span className="text-[11px] text-yellow-200/80">listen-only (no mic)</span>}
-                {voice.sharingSelf && <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">LIVE</span>}
+                <Avatar name="You" color="#6c6cf5" size={56} />
+                <span className="text-center text-sm font-bold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
+                {voice.micBlocked && <span className="text-[11px] text-amber-200/80">listen-only (no mic)</span>}
+                {voice.sharingSelf && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-extrabold text-white">LIVE</span>}
               </div>
               {peers.map((p) => {
                 const sharing = screens.some(([id]) => id === p.userId);
@@ -586,8 +613,8 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                 return (
                   <div
                     key={p.userId}
-                    className="flex flex-col items-center gap-2 rounded-xl p-3 sm:p-5"
-                    style={{ background: `linear-gradient(135deg, ${p.avatarColor}44, #2b2d31 70%)` }}
+                    className="flex flex-col items-center gap-2 rounded-3xl border border-white/[0.06] p-3 shadow-card sm:p-5"
+                    style={{ background: `linear-gradient(135deg, ${p.avatarColor}33, #17171f 70%)` }}
                   >
                     <Avatar name={p.displayName} color={p.avatarColor} src={p.avatarUrl || undefined} size={56} />
                     <span className="max-w-full truncate text-center text-sm font-semibold text-white">{p.displayName}</span>

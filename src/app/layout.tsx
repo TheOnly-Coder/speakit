@@ -42,7 +42,7 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#1e1f22" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e0e13" },
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
   ],
 };

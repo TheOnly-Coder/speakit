@@ -46,17 +46,17 @@ export function PinsModal({
   );
   return (
     <Modal open={open} onClose={onClose} title={`Pinned in #${channelName}`}>
-      {pins.length === 0 && <div className="py-4 text-center text-sm text-speakit-muted">No pinned messages yet.</div>}
+      {pins.length === 0 && <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center text-sm text-speakit-muted">No pinned messages yet.</div>}
       <div className="max-h-96 space-y-2 overflow-y-auto">
         {pins.map((p) => (
-          <div key={p.id} className="rounded-lg bg-speakit-input p-3">
+          <div key={p.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3 transition hover:border-white/[0.12]">
             <div className="mb-1 flex items-center gap-2">
-              <Avatar name={p.author.displayName} color={p.author.avatarColor} src={p.author.avatarUrl || undefined} size={24} />
-              <span className="text-xs font-semibold text-white">{p.author.displayName}</span>
+              <Avatar name={p.author.displayName} color={p.author.avatarColor} src={p.author.avatarUrl || undefined} size={26} />
+              <span className="text-xs font-bold text-white">{p.author.displayName}</span>
               <span className="text-[11px] text-speakit-muted">{formatTime(p.createdAt)}</span>
               <span className="ml-auto flex gap-1">
-                <button onClick={() => onJump(p.id)} className="rounded bg-white/10 px-2 py-0.5 text-[11px] text-white hover:bg-white/20">Jump</button>
-                <button onClick={() => onUnpin(p.id)} className="rounded bg-white/10 px-2 py-0.5 text-[11px] text-white hover:bg-white/20">Unpin</button>
+                <button onClick={() => onJump(p.id)} className="rounded-full bg-speakit-blurple/20 px-3 py-1 text-[11px] font-bold text-[#b5bdff] transition hover:bg-speakit-blurple hover:text-white">Jump</button>
+                <button onClick={() => onUnpin(p.id)} className="rounded-full bg-white/[0.06] px-3 py-1 text-[11px] font-bold text-white transition hover:bg-white/[0.12]">Unpin</button>
               </span>
             </div>
             {shouldShowBody(p.content) ? (

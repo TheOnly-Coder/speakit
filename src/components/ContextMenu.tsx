@@ -73,14 +73,14 @@ export function ContextMenuHost() {
       <div
         ref={ref}
         tabIndex={-1}
-        className="fixed z-[91] w-[220px] overflow-hidden rounded-lg bg-[#111214] p-1.5 shadow-2xl ring-1 ring-black/60 outline-none"
+        className="menu-pop fixed z-[91] w-[220px] overflow-hidden rounded-2xl border border-white/10 bg-[#14141b]/95 p-1.5 shadow-pop backdrop-blur-xl outline-none"
         style={{ left: x, top: y }}
       >
         {state.items.map((it, i) => {
           if (it.type === "sep") return <div key={i} className="my-1 h-px bg-white/10" />;
           if (it.type === "header")
             return (
-              <div key={i} className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-speakit-muted">
+              <div key={i} className="px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted">
                 {it.label}
               </div>
             );
@@ -92,8 +92,8 @@ export function ContextMenuHost() {
                 // Let the menu unmount before running destructive confirms.
                 setTimeout(() => it.onClick(), 0);
               }}
-              className={`flex w-full items-center justify-between rounded px-2.5 py-1.5 text-left text-[13px] font-medium ${
-                it.danger ? "text-red-400 hover:bg-red-500 hover:text-white" : "text-speakit-text hover:bg-speakit-blurple hover:text-white"
+              className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-[13px] font-semibold transition ${
+                it.danger ? "text-rose-300 hover:bg-rose-500 hover:text-white" : "text-speakit-text hover:bg-speakit-blurple hover:text-white"
               }`}
             >
               <span>{it.label}</span>

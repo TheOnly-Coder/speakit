@@ -71,31 +71,33 @@ export function ServerMenu({
   };
 
   const item =
-    "flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-[13px] font-medium text-speakit-text hover:bg-speakit-blurple hover:text-white";
+    "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-speakit-text transition hover:bg-speakit-blurple hover:text-white";
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         title={canOpenSettings ? "Server menu" : "Invite friends"}
-        className="flex h-12 w-full items-center gap-2 border-b border-black/30 px-3 text-left shadow-sm hover:bg-white/5"
+        className="flex h-12 w-full items-center gap-2.5 border-b border-white/[0.06] px-3.5 text-left shadow-sm transition hover:bg-white/[0.04]"
       >
         {serverDetail.iconUrl ? (
-          <img src={serverDetail.iconUrl} alt="" className="h-7 w-7 shrink-0 rounded-lg object-cover" loading="lazy" decoding="async" />
+          <img src={serverDetail.iconUrl} alt="" className="h-7 w-7 shrink-0 rounded-lg object-cover ring-1 ring-white/15" loading="lazy" decoding="async" />
         ) : (
           <span
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black text-white"
-            style={{ backgroundColor: serverDetail.iconColor }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black text-white shadow-card ring-1 ring-white/15"
+            style={{ background: `linear-gradient(135deg, ${serverDetail.iconColor}, ${serverDetail.iconColor}aa)` }}
           >
             {serverDetail.name.slice(0, 1).toUpperCase()}
           </span>
         )}
-        <span className="flex-1 truncate text-sm font-bold text-white">{serverDetail.name}</span>
-        <ChevronDown size={16} className={`shrink-0 text-speakit-muted transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="flex-1 truncate text-[15px] font-extrabold tracking-tight text-white">{serverDetail.name}</span>
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.06] transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          <ChevronDown size={14} className="text-speakit-muted" />
+        </span>
       </button>
 
       {open && (
-        <div className="absolute left-2 right-2 top-full z-40 mt-1 overflow-hidden rounded-lg bg-[#111214] p-1.5 shadow-2xl ring-1 ring-black/60">
+        <div className="menu-pop absolute left-2 right-2 top-full z-40 mt-1.5 overflow-hidden rounded-2xl border border-white/10 bg-[#121218]/95 p-1.5 shadow-pop backdrop-blur-xl">
           <button
             onClick={() => {
               setOpen(false);

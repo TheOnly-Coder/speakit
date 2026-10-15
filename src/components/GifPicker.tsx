@@ -79,12 +79,12 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
   const favUrls = new Set(favs.map((f) => f.url));
 
   return (
-    <div className="w-80 rounded-lg bg-[#1e1f22] p-2 shadow-2xl">
-      <div className="mb-2 flex gap-1">
-        <button onClick={() => setTab("search")} className={`flex flex-1 items-center justify-center gap-1 rounded px-2 py-1.5 text-xs font-semibold ${tab === "search" ? "bg-speakit-blurple text-white" : "text-speakit-muted hover:bg-white/5"}`}>
+    <div className="menu-pop w-80 rounded-2xl border border-white/10 bg-[#14141b]/95 p-2.5 shadow-pop backdrop-blur-xl">
+      <div className="mb-2 flex gap-1 rounded-full border border-white/[0.06] bg-black/20 p-1">
+        <button onClick={() => setTab("search")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-bold transition ${tab === "search" ? "brand-gradient text-white shadow-glow" : "text-speakit-muted hover:text-white"}`}>
           <Search size={13} /> Search
         </button>
-        <button onClick={() => setTab("favorites")} className={`flex flex-1 items-center justify-center gap-1 rounded px-2 py-1.5 text-xs font-semibold ${tab === "favorites" ? "bg-speakit-blurple text-white" : "text-speakit-muted hover:bg-white/5"}`}>
+        <button onClick={() => setTab("favorites")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-bold transition ${tab === "favorites" ? "brand-gradient text-white shadow-glow" : "text-speakit-muted hover:text-white"}`}>
           <Star size={13} /> Favorites
         </button>
       </div>
@@ -93,7 +93,7 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search KLIPY…"
-          className="mb-2 w-full rounded bg-speakit-input px-2 py-1.5 text-sm text-white outline-none placeholder:text-speakit-muted"
+          className="mb-2 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-white outline-none transition placeholder:text-speakit-muted/70 focus:border-speakit-blurple/50 focus:ring-2 focus:ring-speakit-blurple/20"
         />
       )}
       {loading && <div className="flex items-center justify-center py-6 text-speakit-muted"><Loader2 size={18} className="animate-spin" /></div>}

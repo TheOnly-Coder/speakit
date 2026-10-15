@@ -7,16 +7,19 @@ import { useAuthStore } from "@/store/useAuthStore";
 
 function Shell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-dvh items-center justify-center bg-[#1e1f22] p-4">
-      <div className="w-full max-w-md rounded-2xl bg-speakit-sidebar p-8 shadow-2xl">
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-speakit-bg p-4">
+      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-speakit-blurple/25 blur-[120px]" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-fuchsia-500/20 blur-[120px]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-500/[0.06] blur-[120px]" />
+      <div className="animate-fade-up relative w-full max-w-md rounded-3xl border border-white/10 bg-speakit-card/80 p-8 shadow-pop backdrop-blur-xl">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-speakit-blurple text-2xl font-black text-white">S</div>
-          <h1 className="text-2xl font-black text-white">Speakit</h1>
-          <h2 className="mt-2 text-lg font-bold text-white">{title}</h2>
-          <p className="text-sm text-speakit-muted">{subtitle}</p>
+          <div className="brand-gradient mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-black text-white shadow-glow">S</div>
+          <h1 className="brand-text-gradient text-2xl font-black tracking-tight">Speakit</h1>
+          <h2 className="mt-2 text-lg font-extrabold tracking-tight text-white">{title}</h2>
+          <p className="mt-0.5 text-sm text-speakit-muted">{subtitle}</p>
         </div>
         {children}
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-speakit-muted">
+        <p className="mt-5 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-center text-[11px] leading-relaxed text-speakit-muted">
           Tip: on your phone use <b className="text-speakit-text">Share → Add to Home Screen</b> to install Speakit like an app.
         </p>
       </div>
@@ -25,8 +28,8 @@ function Shell({ title, subtitle, children }: { title: string; subtitle: string;
 }
 
 const inputClsAuth =
-  "w-full rounded-md bg-speakit-input px-3 py-2 text-white outline-none focus:ring-2 focus:ring-speakit-blurple";
-const labelClsAuth = "mb-1 block text-xs font-bold uppercase text-speakit-muted";
+  "w-full rounded-xl border border-white/10 bg-speakit-input px-3.5 py-2.5 text-white shadow-inner outline-none transition placeholder:text-speakit-muted/60 focus:border-speakit-blurple/60 focus:ring-2 focus:ring-speakit-blurple/30";
+const labelClsAuth = "mb-1.5 block text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted";
 
 export function LoginForm() {
   const { login, error } = useAuthStore();
@@ -45,21 +48,21 @@ export function LoginForm() {
 
   return (
     <Shell title="Welcome back!" subtitle="Log in to continue to Speakit">
-      <form onSubmit={submit} className="space-y-3">
+      <form onSubmit={submit} className="space-y-3.5">
         <div>
           <label className={labelClsAuth}>Username or email</label>
-          <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className={inputClsAuth} required />
+          <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@example.com" className={inputClsAuth} required />
         </div>
         <div>
           <label className={labelClsAuth}>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClsAuth} required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={inputClsAuth} required />
         </div>
-        {error && <div className="text-sm text-red-400">{error}</div>}
-        <button disabled={busy} className="w-full rounded-md bg-speakit-blurple py-2 font-medium text-white hover:bg-[#4752c4] disabled:opacity-50">
+        {error && <div className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-300 ring-1 ring-rose-500/25">{error}</div>}
+        <button disabled={busy} className="brand-gradient w-full rounded-xl py-2.5 text-sm font-extrabold text-white shadow-glow transition hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:shadow-none">
           {busy ? "Logging in…" : "Log In"}
         </button>
-        <div className="text-sm text-speakit-muted">
-          New here? <Link href="/register" className="text-[#00a8fc] hover:underline">Register</Link>
+        <div className="text-center text-sm text-speakit-muted">
+          New here? <Link href="/register" className="font-bold text-speakit-accent hover:text-white hover:underline">Create an account</Link>
         </div>
       </form>
     </Shell>
@@ -105,7 +108,7 @@ export function RegisterForm() {
 
   return (
     <Shell title="Create an account" subtitle="Join Speakit in seconds">
-      <form onSubmit={submit} className="space-y-3">
+      <form onSubmit={submit} className="space-y-3.5">
         <div>
           <label className={labelClsAuth}>Email</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={inputClsAuth} required maxLength={128} />
@@ -120,28 +123,28 @@ export function RegisterForm() {
         </div>
         <div>
           <label className={labelClsAuth}>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClsAuth} required minLength={6} />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" className={inputClsAuth} required minLength={6} />
         </div>
-        {error && <div className="text-sm text-red-400">{error}</div>}
-        {notice && <div className="text-sm text-green-400">{notice}</div>}
+        {error && <div className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-300 ring-1 ring-rose-500/25">{error}</div>}
+        {notice && <div className="rounded-xl bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 ring-1 ring-emerald-500/25">{notice}</div>}
         {cooldown > 0 && (
           <div className="text-sm text-speakit-muted">You can try again in {cooldown}s — please wait before resending.</div>
         )}
-        <button disabled={busy || cooldown > 0} className="w-full rounded-md bg-speakit-blurple py-2 font-medium text-white hover:bg-[#4752c4] disabled:opacity-50">
-          {busy ? "Creating…" : cooldown > 0 ? `Wait ${cooldown}s…` : "Register"}
+        <button disabled={busy || cooldown > 0} className="brand-gradient w-full rounded-xl py-2.5 text-sm font-extrabold text-white shadow-glow transition hover:brightness-110 active:scale-[0.99] disabled:opacity-50 disabled:shadow-none">
+          {busy ? "Creating…" : cooldown > 0 ? `Wait ${cooldown}s…` : "Create Account"}
         </button>
         {email.includes("@") && (notice || error) && (
           <button
             type="button"
             onClick={handleResend}
             disabled={busy || cooldown > 0}
-            className="w-full rounded-md bg-speakit-input py-2 text-sm font-medium text-white hover:bg-[#2b2d31] disabled:opacity-50"
+            className="w-full rounded-xl border border-white/10 bg-white/[0.06] py-2.5 text-sm font-bold text-white transition hover:bg-white/[0.1] disabled:opacity-50"
           >
             {cooldown > 0 ? `Resend available in ${cooldown}s` : "Resend confirmation email"}
           </button>
         )}
-        <div className="text-sm text-speakit-muted">
-          Have an account? <Link href="/login" className="text-[#00a8fc] hover:underline">Log in</Link>
+        <div className="text-center text-sm text-speakit-muted">
+          Have an account? <Link href="/login" className="font-bold text-speakit-accent hover:text-white hover:underline">Log in</Link>
         </div>
       </form>
     </Shell>

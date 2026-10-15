@@ -15,10 +15,10 @@ function Code({ text, block, lang }: { text: string; block?: boolean; lang?: str
     }
   };
   if (!block) {
-    return <code className="rounded bg-white/10 px-1 py-px font-mono text-[12px] text-[#b5bdff]">{text}</code>;
+    return <code className="rounded-md bg-speakit-blurple/15 px-1.5 py-px font-mono text-[12px] font-semibold text-[#c4b5fd] ring-1 ring-speakit-blurple/25">{text}</code>;
   }
   return (
-    <div className="group relative mb-3 overflow-hidden rounded-lg bg-[#111214] ring-1 ring-black/60">
+    <div className="group relative mb-3 overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur">
       <div className="flex items-center justify-between border-b border-white/5 px-3 py-1.5">
         <span className="text-[10px] font-bold uppercase text-speakit-muted">{lang ?? "javascript"}</span>
         <button onClick={() => void copy()} className="flex items-center gap-1 text-[11px] text-speakit-muted hover:text-white">

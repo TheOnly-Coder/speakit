@@ -338,7 +338,7 @@ function parseInline(text: string, resolveEmoji: EmojiResolver): React.ReactNode
         push(
           <span
             key={`k${inlineKey++}`}
-            className="rounded bg-[#5865f2]/30 px-0.5 font-medium text-[#dee0fc]"
+            className="rounded-md bg-speakit-blurple/25 px-1 font-semibold text-[#cfd2ff] ring-1 ring-speakit-blurple/30"
           >
             {m[0]}
           </span>
@@ -631,7 +631,7 @@ function renderWithCode(
     out.push(
       <pre
         key={`${keyPrefix}-c${k++}`}
-        className="my-1 overflow-x-auto rounded-md bg-[#1e1f22] p-2 font-mono text-[13px] leading-relaxed text-[#dbdee1]"
+        className="my-1.5 overflow-x-auto rounded-xl border border-white/[0.06] bg-black/40 p-2.5 font-mono text-[13px] leading-relaxed text-speakit-text"
       >
         {lang ? <div className="mb-1 text-[11px] text-speakit-muted">{lang}</div> : null}
         <code>{code}</code>

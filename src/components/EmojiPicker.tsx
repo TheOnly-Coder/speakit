@@ -34,12 +34,12 @@ export function EmojiPicker({
   }, [q, allowExternal, serverEmojis, externalEmojis]);
 
   return (
-    <div className="w-72 rounded-lg bg-[#1e1f22] p-2 shadow-2xl">
+    <div className="menu-pop w-72 rounded-2xl border border-white/10 bg-[#14141b]/95 p-2.5 shadow-pop backdrop-blur-xl">
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search emoji…"
-        className="mb-2 w-full rounded bg-speakit-input px-2 py-1.5 text-sm text-white outline-none placeholder:text-speakit-muted"
+        className="mb-2 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-white outline-none transition placeholder:text-speakit-muted/70 focus:border-speakit-blurple/50 focus:ring-2 focus:ring-speakit-blurple/20"
       />
       <div className="max-h-64 overflow-y-auto">
         {mine.length > 0 && (
