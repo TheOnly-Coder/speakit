@@ -581,7 +581,6 @@ function parseBlocks(chunk: string, resolveEmoji: EmojiResolver, keyPrefix: stri
     }
     const text = para.join("\n");
     if (!text) {
-      i++;
       continue;
     }
     if (!text.trim()) {
@@ -604,6 +603,9 @@ function renderWithCode(
   resolveEmoji: EmojiResolver,
   keyPrefix: string
 ): React.ReactNode[] {
+  // Reset per top-level render so identical content yields identical keys
+  // across re-renders (stable keys preserve <Spoiler> open state).
+  inlineKey = 0;
   const out: React.ReactNode[] = [];
   const re = /```(?:(\w+)\n)?([\s\S]*?)(?:```|$)/g;
   let last = 0;

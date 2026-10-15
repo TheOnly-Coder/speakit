@@ -97,7 +97,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
     const socket = getSocket();
     const onNew = (msg: { conversationId: string; id: string; content: string; createdAt: string; edited: boolean; author: ChatMessage["author"]; tempId?: string; attachments?: ChatMessage["attachments"] }) => {
       if (msg.conversationId !== conversationId) return;
-      addMessage(key, { id: msg.id, content: msg.content, conversationId, edited: msg.edited, createdAt: msg.createdAt, author: msg.author, reactions: [], attachments: msg.attachments ?? [] });
+      addMessage(key, { id: msg.id, tempId: msg.tempId, content: msg.content, conversationId, edited: msg.edited, createdAt: msg.createdAt, author: msg.author, reactions: [], attachments: msg.attachments ?? [] });
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     };
     const onTyping = (p: { conversationId: string; userId: string; typing: boolean }) => {
@@ -145,7 +145,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
       return;
     }
     if (!clean && attachments.length === 0) return;
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const u = useAuthStore.getState().user;
     if (u) {
       addMessage(key, {
@@ -163,7 +163,7 @@ export function DMView({ conversationId }: { conversationId: string }) {
     }
     getSocket().emit("dm:typing", { conversationId, typing: false });
     getSocket().emit("dm:message:send", { conversationId, content: clean, tempId, attachments }, (res: unknown) => {
-      const r = res as { ok?: boolean; message?: { id: string; content: string; createdAt: string; edited: boolean; author: ChatMessage["author"]; attachments?: ChatMessage["attachments"] } };
+      const r = res as { ok?: boolean; message?: { id: string; content: string; createdAt: string; edited: boolean; author: ChatMessage["author"]; attachments?: ChatMessage["attachments"] }; error?: string };
       if (r?.ok && r.message) {
         const all = useChatStore.getState().messages[key] ?? [];
         const withoutTemp = all.filter((m) => m.tempId !== tempId && m.id !== tempId);
@@ -172,6 +172,9 @@ export function DMView({ conversationId }: { conversationId: string }) {
         }
         setMessages(key, withoutTemp);
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 30);
+      } else {
+        const all = useChatStore.getState().messages[key] ?? [];
+        setMessages(key, all.filter((m) => m.tempId !== tempId && m.id !== tempId));
       }
     });
   };

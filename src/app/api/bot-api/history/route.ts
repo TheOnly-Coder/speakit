@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getBotByToken } from "@/lib/bots/executor";
+import { canInChannel } from "@/lib/channelPerms";
 
 function tokenFrom(req: Request): string {
   const auth = req.headers.get("authorization") ?? "";
@@ -12,6 +13,7 @@ function tokenFrom(req: Request): string {
 export async function GET(req: Request) {
   const bot = await getBotByToken(tokenFrom(req));
   if (!bot) return NextResponse.json({ error: "Invalid bot token" }, { status: 401 });
+  if (!bot.enabled) return NextResponse.json({ error: "Bot is disabled" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const channelId = searchParams.get("channelId") ?? "";
@@ -22,6 +24,9 @@ export async function GET(req: Request) {
   if (!channel) return NextResponse.json({ error: "Channel not found" }, { status: 404 });
   const installed = bot.servers.some((s) => s.serverId === channel.serverId);
   if (!installed) return NextResponse.json({ error: "Bot is not in that channel's server" }, { status: 403 });
+  if (!(await canInChannel(bot.userId, channel, "view"))) {
+    return NextResponse.json({ error: "Bot cannot view that channel" }, { status: 403 });
+  }
 
   const messages = await prisma.message.findMany({
     where: { channelId },

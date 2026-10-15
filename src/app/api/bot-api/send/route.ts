@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getBotByToken } from "@/lib/bots/executor";
 import { broadcastChannelMessage } from "@/lib/bots/emit";
+import { canInChannel } from "@/lib/channelPerms";
 
 function tokenFrom(req: Request): string {
   const auth = req.headers.get("authorization") ?? "";
@@ -45,6 +46,12 @@ export async function POST(req: Request) {
     where: { userId_serverId: { userId: bot.userId, serverId: channel.serverId } },
   });
   if (!member) return NextResponse.json({ error: "Bot is not a member there (re-add it)" }, { status: 403 });
+  if (!(await canInChannel(bot.userId, channel, "view"))) {
+    return NextResponse.json({ error: "Bot cannot view that channel" }, { status: 403 });
+  }
+  if (!(await canInChannel(bot.userId, channel, "send"))) {
+    return NextResponse.json({ error: "Bot cannot send in that channel" }, { status: 403 });
+  }
 
   // Gentle anti-spam: 5 messages / 10s per bot per channel.
   const recent = await prisma.message.count({

@@ -51,9 +51,8 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
   }, [loadFavs]);
 
   useEffect(() => {
-    if (tab === "search") void load("");
-    else void loadFavs();
-  }, [tab, load, loadFavs]);
+    if (tab === "favorites") void loadFavs();
+  }, [tab, loadFavs]);
 
   useEffect(() => {
     if (tab !== "search") return;

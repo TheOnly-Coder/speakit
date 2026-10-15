@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { sanitizeAttachments } from "@/lib/attachments";
+import { visibleStatus } from "@/lib/presence";
 import { z } from "zod";
 
 export async function GET(req: Request, { params }: { params: { conversationId: string } }) {
@@ -25,7 +26,7 @@ export async function GET(req: Request, { params }: { params: { conversationId: 
   });
   const other = convo.participantAId === userId ? convo.participantB : convo.participantA;
   return NextResponse.json({
-    other: { id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl, status: other.status },
+    other: { id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl, status: visibleStatus(other.status, other.id) },
     messages: messages.reverse().map((m) => ({
       id: m.id,
       content: m.content,

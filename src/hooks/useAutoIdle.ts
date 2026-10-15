@@ -112,7 +112,7 @@ export function useAutoIdle(timeoutMs: number = IDLE_TIMEOUT_MS) {
       window.removeEventListener("focus", activity);
       window.removeEventListener("online", activity);
       window.removeEventListener("speakit:activity", activity);
-      document.removeEventListener("scroll", activity);
+      document.removeEventListener("scroll", activity, { capture: true });
       document.removeEventListener("visibilitychange", onVisible);
       socket.off("connect", onSocketConnect);
     };

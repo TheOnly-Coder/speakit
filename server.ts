@@ -238,7 +238,29 @@ void app.prepare().then(() => {
       try {
         if (!Array.isArray(userIds)) return;
         for (const id of userIds.slice(0, 5)) {
-          if (typeof id === "string" && id) io.to(`user:${id}`).emit("friend:updated", {});
+          if (typeof id !== "string" || !id || id === userId) continue;
+          // Only notify users with a real relationship (friend row either way
+          // or a shared DM) — prevents arbitrary users from spamming refreshes.
+          const rel = await prisma.friendship.findFirst({
+            where: {
+              OR: [
+                { requesterId: userId, receiverId: id },
+                { requesterId: id, receiverId: userId },
+              ],
+            },
+          });
+          if (!rel) {
+            const dm = await prisma.directConversation.findFirst({
+              where: {
+                OR: [
+                  { participantAId: userId, participantBId: id },
+                  { participantAId: id, participantBId: userId },
+                ],
+              },
+            });
+            if (!dm) continue;
+          }
+          io.to(`user:${id}`).emit("friend:updated", {});
         }
       } catch {
         /* ignore */
@@ -320,7 +342,9 @@ void app.prepare().then(() => {
           if (!server) return ack?.({ error: "Not found" });
           if (server.ownerId === memberUserId) return ack?.({ error: "Cannot remove the owner" });
 
-          await prisma.serverMember.deleteMany({ where: { userId: memberUserId, serverId } });
+          if (action === "kick" || action === "ban") {
+            await prisma.serverMember.deleteMany({ where: { userId: memberUserId, serverId } });
+          }
           if (action === "ban") {
             await prisma.ban.upsert({
               where: { serverId_userId: { serverId, userId: memberUserId } },
@@ -346,6 +370,7 @@ void app.prepare().then(() => {
       try {
         const channel = await canAccessChannel(userId, channelId);
         if (!channel) return ack?.({ error: "Forbidden" });
+        if (!(await canInChannel(userId, channel, "view"))) return ack?.({ error: "Forbidden" });
         await socket.join(`channel:${channelId}`);
         await socket.join(`server:${channel.serverId}`);
         ack?.({ ok: true });
@@ -483,9 +508,12 @@ void app.prepare().then(() => {
 
     socket.on("channel:message:edit", async ({ messageId, content }: { messageId: string; content: string }, ack?: (res: unknown) => void) => {
       try {
-        const msg = await prisma.message.findUnique({ where: { id: messageId } });
+        const msg = await prisma.message.findUnique({ where: { id: messageId }, include: { channel: true } });
         if (!msg) return ack?.({ error: "Not found" });
         if (msg.authorId !== userId) return ack?.({ error: "Only author can edit" });
+        // Ex-members / banned users must not mutate history after removal.
+        if (!(await isServerMember(userId, msg.channel.serverId))) return ack?.({ error: "Forbidden" });
+        if (!(await canInChannel(userId, msg.channel, "view"))) return ack?.({ error: "Forbidden" });
         const clean = String(content ?? "").trim().slice(0, 500);
         if (!clean) return ack?.({ error: "Message cannot be empty" });
         const updated = await prisma.message.update({
@@ -511,7 +539,7 @@ void app.prepare().then(() => {
         const msg = await prisma.message.findUnique({ where: { id: messageId }, include: { channel: true } });
         if (!msg) return ack?.({ error: "Not found" });
         const managed = await memberCan(userId, msg.channel.serverId, "managePins");
-        if (msg.authorId !== userId && !managed) return ack?.({ error: "Missing permission: Manage pins" });
+        if (!managed) return ack?.({ error: "Missing permission: Manage pins" });
         if (pinned) {
           const count = await prisma.message.count({ where: { channelId: msg.channelId, pinned: true } });
           if (count >= 50) return ack?.({ error: "Pin limit reached (50 per channel)" });
@@ -534,6 +562,10 @@ void app.prepare().then(() => {
         if (!msg) return ack?.({ error: "Not found" });
         const canManage = await memberCan(userId, msg.channel.serverId, "manageMessages");
         if (msg.authorId !== userId && !canManage) return ack?.({ error: "Cannot delete" });
+        // Authors must still belong to the server (banned/kicked lose access).
+        if (msg.authorId === userId && !canManage) {
+          if (!(await isServerMember(userId, msg.channel.serverId))) return ack?.({ error: "Forbidden" });
+        }
         await prisma.message.delete({ where: { id: messageId } });
         io.to(`channel:${msg.channelId}`).emit("channel:message:deleted", { id: messageId, channelId: msg.channelId });
         ack?.({ ok: true });
@@ -551,6 +583,21 @@ void app.prepare().then(() => {
         const ok = await isServerMember(userId, msg.channel.serverId);
         if (!ok) return ack?.({ error: "Forbidden" });
         if (!(await canInChannel(userId, msg.channel, "react"))) return ack?.({ error: "You can't react in this channel" });
+        // Custom emoji gate (mirrors REST): :name: must exist in a server the
+        // user belongs to, and cross-server use needs allowExternalEmoji.
+        const custom = /^:([a-z0-9_]{2,32}):$/.exec(clean);
+        if (custom) {
+          const name = custom[1];
+          const mine = await prisma.serverMember.findMany({ where: { userId }, select: { serverId: true } });
+          const found = await prisma.customEmoji.findFirst({
+            where: { name, serverId: { in: mine.map((m) => m.serverId) } },
+          });
+          if (!found) return ack?.({ error: "Emoji not found" });
+          if (found.serverId !== msg.channel.serverId) {
+            const target = await prisma.server.findUnique({ where: { id: msg.channel.serverId } });
+            if (!target?.allowExternalEmoji) return ack?.({ error: "This server doesn't allow outside emoji" });
+          }
+        }
 
         const existing = await prisma.reaction.findUnique({ where: { messageId_userId_emoji: { messageId, userId, emoji: clean } } });
         if (existing) {
@@ -578,6 +625,7 @@ void app.prepare().then(() => {
       try {
         const channel = await canAccessChannel(userId, channelId);
         if (!channel) return;
+        if (!(await canInChannel(userId, channel, "view"))) return;
         socket.to(`channel:${channelId}`).emit("channel:typing:update", {
           channelId,
           userId,
@@ -775,6 +823,12 @@ void app.prepare().then(() => {
 
     socket.on("voice:signal", async ({ toUserId, channelId, kind, payload }: { toUserId: string; channelId: string; kind: "offer" | "answer" | "ice"; payload: unknown }) => {
       try {
+        if (!toUserId || !channelId || !["offer", "answer", "ice"].includes(kind)) return;
+        if (payload === undefined || payload === null) return;
+        // Both peers must be in the same voice room — prevents arbitrary
+        // users from spamming signals at anyone online.
+        const room = voiceRooms.get(channelId);
+        if (!room || !room.has(userId) || !room.has(toUserId)) return;
         const targets = presenceSockets(toUserId);
         if (targets.size === 0) return;
         for (const sid of targets) {

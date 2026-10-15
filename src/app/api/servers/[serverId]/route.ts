@@ -32,6 +32,8 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
     ? await prisma.user.findMany({ where: { id: { in: banUserIds } } })
     : [];
   const banName = new Map(banUsers.map((u) => [u.id, { username: u.username, displayName: u.displayName }]));
+  // Bans + reasons are moderator-only; other members get an empty list.
+  const canSeeBans = await hasPermission(userId, params.serverId, "banMembers");
 
   return NextResponse.json({
     server: {
@@ -56,13 +58,15 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
         permissions: safeParsePerms(r.permissions),
         memberCount: r._count.memberRoles,
       })),
-      bans: server.bans.map((b) => ({
-        id: b.id,
-        userId: b.userId,
-        reason: b.reason,
-        username: banName.get(b.userId)?.username ?? "?",
-        displayName: banName.get(b.userId)?.displayName ?? "Unknown user",
-      })),
+      bans: canSeeBans
+        ? server.bans.map((b) => ({
+          id: b.id,
+          userId: b.userId,
+          reason: b.reason,
+          username: banName.get(b.userId)?.username ?? "?",
+          displayName: banName.get(b.userId)?.displayName ?? "Unknown user",
+        }))
+        : [],
       customEmojis: server.customEmojis,
       members: server.members.map((m) => ({
         id: m.user.id,
@@ -164,6 +168,10 @@ export async function DELETE(_req: Request, { params }: { params: { serverId: st
     await prisma.server.delete({ where: { id: server.id } });
     return NextResponse.json({ ok: true, deleted: true });
   }
+  const membership = await prisma.serverMember.findUnique({
+    where: { userId_serverId: { userId, serverId: server.id } },
+  });
+  if (!membership) return NextResponse.json({ error: "Not a member" }, { status: 403 });
   await prisma.serverMember.deleteMany({ where: { userId, serverId: server.id } });
   return NextResponse.json({ ok: true, left: true });
 }

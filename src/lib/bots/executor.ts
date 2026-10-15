@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "../db";
 import { runBotCode, parseStore, type BotAction, type BotTrigger } from "./sandbox";
+import { canInChannel } from "../channelPerms";
 
 /** Token shown ONCE to the owner, used as `Authorization: Bot <token>`. */
 export function newBotToken(): string {
@@ -199,9 +200,11 @@ async function executeBotAction(
   if (action.kind === "reply") {
     const target = await prisma.message.findUnique({
       where: { id: action.replyToId },
-      include: { channel: { select: { id: true, serverId: true } } },
+      include: { channel: { select: { id: true, serverId: true, type: true } } },
     });
     if (!target || target.channel.serverId !== triggerServerId) return null;
+    if (!(await canInChannel(botUserId, target.channel, "view"))) return null;
+    if (!(await canInChannel(botUserId, target.channel, "send"))) return null;
     const created = await prisma.message.create({
       data: { content, channelId: target.channel.id, authorId: botUserId, replyToId: target.id },
       include: { author: true },
@@ -223,6 +226,9 @@ async function executeBotAction(
     where: { userId_serverId: { userId: botUserId, serverId: channel.serverId } },
   });
   if (!member) return null;
+  // Bots obey channel overwrites like everyone else.
+  if (!(await canInChannel(botUserId, channel, "view"))) return null;
+  if (!(await canInChannel(botUserId, channel, "send"))) return null;
   const created = await prisma.message.create({
     data: { content, channelId: channel.id, authorId: botUserId },
     include: { author: true },

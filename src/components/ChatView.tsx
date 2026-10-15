@@ -125,7 +125,8 @@ export function ChatView({ channelId }: { channelId: string }) {
     const onNew = (msg: Record<string, unknown>) => {
       if (String(msg.channelId) !== channelId) return;
       const incoming = toChatMessage({ ...msg, reactions: [] });
-      incoming.tempId = undefined; // server echo — never show "sending" on real messages
+      // Keep server-echoed tempId so the store can drop the optimistic echo
+      // (addMessage filters by tempId). Real messages without tempId stay as-is.
       addMessage(key, incoming);
       scrollToBottom();
     };
@@ -177,18 +178,28 @@ export function ChatView({ channelId }: { channelId: string }) {
     getSocket().emit("channel:typing", { channelId, typing: isTyping });
   };
 
-  // Track typing input activity via interval? Simple: emit true on send focus is handled in input wrapper below.
-  // We hook global keydown in message input container via onSend wrapper — instead emit typing on each keystroke with debounce here:
+  // Track typing: only keystrokes inside a message box count (not global
+  // shortcuts, search, etc). Cleanup clears typing so channel switches don't
+  // leave ghost "typing…" indicators.
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      if (tag !== "TEXTAREA" && tag !== "INPUT") return;
       emitTyping(true);
       if (typingTimeout.current) clearTimeout(typingTimeout.current);
       typingTimeout.current = setTimeout(() => emitTyping(false), 2000);
     };
     window.addEventListener("keydown", handler);
+    const cid = channelId;
     return () => {
       window.removeEventListener("keydown", handler);
       if (typingTimeout.current) clearTimeout(typingTimeout.current);
+      try {
+        getSocket().emit("channel:typing", { channelId: cid, typing: false });
+      } catch {
+        /* ignore */
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
@@ -239,6 +250,18 @@ export function ChatView({ channelId }: { channelId: string }) {
           const withoutTemp = all.filter((m) => m.tempId !== tempId && m.id !== tempId);
           if (!withoutTemp.some((m) => m.id === real.id)) withoutTemp.push(real);
           setMessages(key, withoutTemp);
+        } else {
+          // Send rejected (validation, perms, offline with no ack): drop the
+          // optimistic echo so it doesn't stick as "sending…" forever.
+          const all = useChatStore.getState().messages[key] ?? [];
+          setMessages(key, all.filter((m) => m.tempId !== tempId && m.id !== tempId));
+          if (r?.error) {
+            try {
+              alert(r.error);
+            } catch {
+              /* ignore */
+            }
+          }
         }
       }
     );

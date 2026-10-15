@@ -24,9 +24,11 @@ export async function PATCH(req: Request, { params }: { params: { messageId: str
   const body = await req.json();
   const parsed = z.object({ content: z.string().min(1).max(500) }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Keep messages under 500 characters" }, { status: 400 });
+  const clean = parsed.data.content.trim().slice(0, 500);
+  if (!clean) return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
   const updated = await prisma.directMessage.update({
     where: { id: msg.id },
-    data: { content: parsed.data.content.trim().slice(0, 500), edited: true },
+    data: { content: clean, edited: true },
   });
   return NextResponse.json({ message: updated });
 }

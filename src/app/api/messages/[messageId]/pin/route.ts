@@ -10,7 +10,7 @@ export async function PATCH(req: Request, { params }: { params: { messageId: str
   const msg = await prisma.message.findUnique({ where: { id: params.messageId }, include: { channel: true } });
   if (!msg) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const canManage = await hasPermission(userId, msg.channel.serverId, "managePins");
-  if (msg.authorId !== userId && !canManage) {
+  if (!canManage) {
     return NextResponse.json({ error: "Missing permission: Manage pins" }, { status: 403 });
   }
   const body = await req.json();

@@ -64,9 +64,14 @@ export const useChatStore = create<ChatState>((set) => ({
     set((s) => {
       const existing = s.messages[key] ?? [];
       if (existing.some((m) => m.id === msg.id)) return s;
-      // drop temp echo with same tempId if present
-      const filtered = msg.tempId ? existing.filter((m) => m.tempId !== msg.tempId) : existing;
-      return { messages: { ...s.messages, [key]: [...filtered, msg] } };
+      // Server echo carries the optimistic tempId but a real id: drop the
+      // temp echo and store the real message WITHOUT tempId so the
+      // "sending…" pill clears.
+      if (msg.tempId) {
+        const filtered = existing.filter((m) => m.tempId !== msg.tempId && m.id !== msg.tempId);
+        return { messages: { ...s.messages, [key]: [...filtered, { ...msg, tempId: undefined }] } };
+      }
+      return { messages: { ...s.messages, [key]: [...existing, msg] } };
     }),
   updateMessage: (key, id, patch) =>
     set((s) => ({

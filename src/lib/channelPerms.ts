@@ -36,14 +36,20 @@ export async function channelPermissions(
 
   const overwrites = await prisma.channelOverwrite.findMany({ where: { channelId: channel.id } });
   const allowed = baseAllowed(channel.type);
-  const apply = (target: string) => {
+  // Deny wins over allow: collect allows first, then apply denies so a deny
+  // in ANY role (or @everyone) cannot be overridden by an allow elsewhere.
+  const allows: string[][] = [];
+  const denies: string[][] = [];
+  const collect = (target: string) => {
     const ow = overwrites.find((o) => o.target === target);
     if (!ow) return;
-    for (const p of parseList(ow.allow)) allowed.add(p);
-    for (const p of parseList(ow.deny)) allowed.delete(p);
+    allows.push(parseList(ow.allow));
+    denies.push(parseList(ow.deny));
   };
-  apply("everyone");
-  for (const mr of member.memberRoles) apply(mr.roleId);
+  collect("everyone");
+  for (const mr of member.memberRoles) collect(mr.roleId);
+  for (const list of allows) for (const p of list) allowed.add(p);
+  for (const list of denies) for (const p of list) allowed.delete(p);
   return allowed;
 }
 
@@ -76,14 +82,18 @@ export async function visibleChannels<T extends LightChannel>(userId: string, se
   }
   return channels.filter((ch) => {
     const allowed = baseAllowed(ch.type);
-    const apply = (target: string) => {
-      const ow = (byChannel.get(ch.id) ?? []).find((o) => o.target === target);
-      if (!ow) return;
-      for (const p of ow.allow) allowed.add(p);
-      for (const p of ow.deny) allowed.delete(p);
-    };
-    apply("everyone");
-    for (const rid of roleIds) apply(rid);
+    const ows = byChannel.get(ch.id) ?? [];
+    // Deny wins over allow: applies first, denies second.
+    for (const ow of ows) {
+      if (ow.target === "everyone" || roleIds.has(ow.target)) {
+        for (const p of ow.allow) allowed.add(p);
+      }
+    }
+    for (const ow of ows) {
+      if (ow.target === "everyone" || roleIds.has(ow.target)) {
+        for (const p of ow.deny) allowed.delete(p);
+      }
+    }
     return allowed.has("view");
   });
 }
