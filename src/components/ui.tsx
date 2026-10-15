@@ -36,7 +36,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
 }
 
 export const inputCls =
-  "w-full rounded-xl border border-white/10 bg-speakit-input px-3.5 py-2.5 text-sm text-white shadow-inner placeholder:text-speakit-muted/70 outline-none transition focus:border-speakit-blurple/60 focus:bg-[#22222f] focus:ring-2 focus:ring-speakit-blurple/30";
+  "w-full rounded-xl border border-white/10 bg-speakit-input px-3.5 py-2.5 text-sm text-white shadow-inner placeholder:text-speakit-muted/70 outline-none transition focus:border-speakit-blurple/60 focus:ring-2 focus:ring-speakit-blurple/30";
 
 export function PrimaryButton({
   children,

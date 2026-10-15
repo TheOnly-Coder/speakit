@@ -68,10 +68,10 @@ export function UserArea({ onOpenSettings, onLogout }: { onOpenSettings: () => v
   return (
     <div ref={ref} className="relative">
       {open && (
-        <div className="menu-pop absolute bottom-full left-2 right-2 z-40 mb-2 overflow-hidden rounded-2xl border border-white/10 bg-[#121218]/95 shadow-pop backdrop-blur-xl sm:left-2 sm:right-auto sm:w-64">
+        <div className="menu-pop absolute bottom-full left-2 right-2 z-40 mb-2 overflow-hidden rounded-2xl border border-white/10 bg-speakit-card/95 shadow-pop backdrop-blur-xl sm:left-2 sm:right-auto sm:w-64">
           <div className="brand-gradient h-16 p-3 pb-8 opacity-90" />
           <div className="-mt-7 px-3">
-            <div className="w-fit rounded-full ring-4 ring-[#121218]">
+            <div className="w-fit rounded-full ring-4 ring-speakit-card">
               <Avatar name={user.displayName} color={user.avatarColor} src={user.avatarUrl || undefined} size={52} status={user.status} />
             </div>
             <div className="mt-2 rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
@@ -117,7 +117,7 @@ export function UserArea({ onOpenSettings, onLogout }: { onOpenSettings: () => v
         </div>
       )}
 
-      <div className="flex items-center gap-2 border-t border-white/[0.06] bg-black/30 px-2.5 py-2 backdrop-blur">
+      <div className="flex items-center gap-2 border-t border-white/[0.06] bg-speakit-rail/60 px-2.5 py-2 backdrop-blur">
         <button onClick={() => setOpen((v) => !v)} title="Set status, settings, log out" className="rounded-full transition hover:scale-105 hover:opacity-90 active:scale-95">
           <Avatar name={user.displayName} color={user.avatarColor} src={user.avatarUrl || undefined} size={34} status={user.status} />
         </button>

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function BotDocsPage() {
   return (
-    <div className="h-dvh overflow-y-auto bg-[#1e1f22]">
+    <div className="h-dvh overflow-y-auto bg-speakit-rail">
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10">
         <div className="mb-4 flex items-center gap-3">
           <Link

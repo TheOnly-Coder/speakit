@@ -6,40 +6,163 @@
   color-scheme: dark;
   --speakit-blurple: #6c6cf5;
   --speakit-accent: #a78bfa;
+  /* Dark-mode surface palette (RGB triplets so Tailwind opacity modifiers work) */
+  --sp-bg: 14 14 19;
+  --sp-sidebar: 20 20 27;
+  --sp-rail: 10 10 14;
+  --sp-card: 23 23 31;
+  --sp-input: 29 29 40;
+  --sp-text: 236 234 242;
+  --sp-muted: 154 154 176;
+  --sp-border: 42 42 54;
+  --sp-accent: 167 139 250;
 }
 
 html.light {
   color-scheme: light;
+  /* Light-mode surface palette — same tokens, so every bg-speakit-*
+     (including /opacity variants) blends automatically. */
+  --sp-bg: 255 255 255;
+  --sp-sidebar: 243 244 248;
+  --sp-rail: 232 234 241;
+  --sp-card: 255 255 255;
+  --sp-input: 237 239 244;
+  --sp-text: 43 45 56;
+  --sp-muted: 99 102 122;
+  --sp-border: 222 224 235;
+  --sp-accent: 124 58 237;
 }
 
-/* Light theme: remap our dark palette surfaces to light ones */
+/* Light theme: speakit tokens blend via CSS vars above. What remains is
+   remapping white/black overlay utilities + dark-only pastels. */
 html.light body {
   background: #eef0f6;
   color: #1c1d22;
 }
-html.light .bg-speakit-bg { background-color: #ffffff; }
-html.light .bg-speakit-sidebar { background-color: #f3f4f8; }
-html.light .bg-speakit-rail { background-color: #e7e9f1; }
-html.light .bg-speakit-input { background-color: #eceef4; }
-html.light .bg-speakit-card { background-color: #f3f4f8; }
 html.light .bg-\[\#232428\] { background-color: #e7e9f1; }
 html.light .bg-\[\#2b2d31\] { background-color: #f3f4f8; }
 html.light .bg-\[\#1e1f22\] { background-color: #e7e9f1; }
-html.light .bg-\[\#111214\] { background-color: #ffffff; }
-html.light .text-white { color: #1c1d22; }
-html.light .text-speakit-text { color: #2b2d38; }
-html.light .text-speakit-muted { color: #63667a; }
+html.light [class*="bg-[#111214]"] { background-color: #f0f1f6; }
 html.light .border-black\/30 { border-color: #00000018; }
-html.light .hover\:bg-white\/5:hover { background-color: #00000010; }
-html.light .hover\:bg-white\/10:hover { background-color: #00000014; }
-html.light .bg-white\/10 { background-color: #00000012; }
-html.light .bg-white\/5 { background-color: #00000008; }
+
+/* White overlays (chips, cards, hover states) become subtle dark washes. */
+html.light .bg-white\/5 { background-color: rgb(15 15 25 / 0.04); }
+html.light .bg-white\/10 { background-color: rgb(15 15 25 / 0.07); }
+html.light .bg-white\/20 { background-color: rgb(15 15 25 / 0.14); }
+html.light [class*="bg-white/[0.02]"] { background-color: rgb(15 15 25 / 0.025); }
+html.light [class*="bg-white/[0.03]"] { background-color: rgb(15 15 25 / 0.035); }
+html.light [class*="bg-white/[0.04]"] { background-color: rgb(15 15 25 / 0.045); }
+html.light [class*="bg-white/[0.05]"] { background-color: rgb(15 15 25 / 0.05); }
+html.light [class*="bg-white/[0.06]"] { background-color: rgb(15 15 25 / 0.06); }
+html.light [class*="bg-white/[0.08]"] { background-color: rgb(15 15 25 / 0.075); }
+html.light [class*="bg-white/[0.1]"] { background-color: rgb(15 15 25 / 0.09); }
+html.light [class*="bg-white/[0.12]"] { background-color: rgb(15 15 25 / 0.11); }
+html.light [class*="hover:bg-white/5"]:hover { background-color: rgb(15 15 25 / 0.04); }
+html.light [class*="hover:bg-white/10"]:hover { background-color: rgb(15 15 25 / 0.07); }
+html.light [class*="hover:bg-white/20"]:hover { background-color: rgb(15 15 25 / 0.12); }
+html.light [class*="hover:bg-white/[0.04]"]:hover { background-color: rgb(15 15 25 / 0.045); }
+html.light [class*="hover:bg-white/[0.05]"]:hover { background-color: rgb(15 15 25 / 0.05); }
+html.light [class*="hover:bg-white/[0.06]"]:hover { background-color: rgb(15 15 25 / 0.06); }
+html.light [class*="hover:bg-white/[0.08]"]:hover { background-color: rgb(15 15 25 / 0.075); }
+html.light [class*="hover:bg-white/[0.1]"]:hover { background-color: rgb(15 15 25 / 0.09); }
+html.light [class*="hover:bg-white/[0.12]"]:hover { background-color: rgb(15 15 25 / 0.11); }
+html.light .group:hover [class*="group-hover:bg-white"] { background-color: rgb(15 15 25 / 0.1); }
+html.light [class*="disabled:bg-white"]:disabled { background-color: rgb(15 15 25 / 0.07); }
+html.light [class*="active:bg-white"]:active { background-color: rgb(15 15 25 / 0.09); }
+
+/* Black overlays: structural panels become light greys. True scrims
+   (modal/drawer backdrops, image chips at /55+) stay dark. */
+html.light [class*="bg-black/20"] { background-color: rgb(15 15 25 / 0.05); }
+html.light [class*="bg-black/30"] { background-color: rgb(15 15 25 / 0.06); }
+html.light [class*="bg-black/40"] { background-color: rgb(15 15 25 / 0.07); }
+html.light [class*="hover:bg-black/45"]:hover { background-color: rgb(15 15 25 / 0.1); }
+
+/* White borders/rings become soft dark hairlines. */
+html.light [class*="border-white/5"] { border-color: rgb(15 15 25 / 0.06); }
+html.light [class*="border-white/10"] { border-color: rgb(15 15 25 / 0.1); }
+html.light [class*="border-white/15"] { border-color: rgb(15 15 25 / 0.14); }
+html.light [class*="border-white/20"] { border-color: rgb(15 15 25 / 0.18); }
+html.light [class*="border-white/25"] { border-color: rgb(15 15 25 / 0.22); }
+html.light [class*="border-white/[0.06]"] { border-color: rgb(15 15 25 / 0.08); }
+html.light [class*="hover:border-white/20"]:hover { border-color: rgb(15 15 25 / 0.2); }
+html.light [class*="hover:border-white/[0.12]"]:hover { border-color: rgb(15 15 25 / 0.16); }
+html.light [class*="hover:border-white/[0.14]"]:hover { border-color: rgb(15 15 25 / 0.2); }
+html.light [class*="ring-white/10"] { --tw-ring-color: rgb(15 15 25 / 0.1); }
+html.light [class*="ring-white/15"] { --tw-ring-color: rgb(15 15 25 / 0.14); }
+html.light [class*="ring-white/20"] { --tw-ring-color: rgb(15 15 25 / 0.18); }
+html.light [class*="ring-white/25"] { --tw-ring-color: rgb(15 15 25 / 0.2); }
+html.light [class*="ring-white/[0.06]"] { --tw-ring-color: rgb(15 15 25 / 0.08); }
+html.light [class*="hover:ring-white/20"]:hover { --tw-ring-color: rgb(15 15 25 / 0.22); }
+html.light [class*="hover:ring-white/25"]:hover { --tw-ring-color: rgb(15 15 25 / 0.26); }
+
+/* Plain white text becomes ink — except on colorful surfaces (carved out below). */
+html.light .text-white { color: #1c1d22; }
+html.light [class*="hover:text-white"]:hover { color: #1c1d22; }
+
+/* Colored pills/buttons keep white text in light mode. */
+html.light [class*="brand-gradient"].text-white,
+html.light [class*="brand-gradient"] .text-white,
+html.light .on-brand.text-white,
+html.light .on-brand .text-white,
+html.light [class~="bg-emerald-500"].text-white,
+html.light [class~="bg-rose-500"].text-white,
+html.light [class~="bg-red-500"].text-white,
+html.light [class~="bg-speakit-blurple"].text-white,
+html.light [class~="bg-speakit-green"].text-white,
+html.light [class*="from-rose-500"].text-white {
+  color: #fff;
+}
+/* Rail icon buttons keep white icons while hovering their color fill. */
+html.light [class*="hover:bg-emerald-500"]:hover { color: #fff; }
+/* Brand-colored contexts keep their dark scrims/rims. */
+html.light .on-brand [class*="bg-black/30"] { background-color: rgb(0 0 0 / 0.3); }
+html.light .on-brand [class*="hover:bg-black/45"]:hover { background-color: rgb(0 0 0 / 0.45); }
+html.light .on-brand [class*="border-white"] { border-color: rgb(255 255 255 / 0.25); }
+html.light .on-brand [class*="ring-white"] { --tw-ring-color: rgb(255 255 255 / 0.25); }
+
+/* Pastel text designed for dark backgrounds gets deepened for light ones. */
+html.light [class*="text-emerald-300"] { color: #047857; }
+html.light [class*="text-emerald-400"] { color: #059669; }
+html.light [class*="text-rose-300"] { color: #e11d48; }
+html.light [class*="text-amber-200"] { color: #b45309; }
+html.light [class*="text-amber-300"] { color: #b45309; }
+html.light [class*="text-yellow-400"] { color: #a16207; }
+html.light [class*="text-[#b5bdff]"] { color: #4338ca; }
+html.light [class*="text-[#c4b5fd]"] { color: #6d28d9; }
+html.light [class*="text-[#949cf7]"] { color: #4f46e5; }
+
+/* Skeleton + glass adapt. */
+html.light .skeleton { background: rgb(15 15 25 / 0.07); }
+html.light .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgb(15 15 25 / 0.08), transparent);
+}
+html.light .glass {
+  background: rgb(255 255 255 / 0.75);
+  border-color: rgb(15 15 25 / 0.08);
+}
 html.light * {
   scrollbar-color: #b5bac1 transparent;
 }
 html.light *::-webkit-scrollbar-thumb {
-  background: #b5bac1;
+  background: rgb(15 15 25 / 0.18);
+  background-clip: content-box;
+  border: 2px solid transparent;
 }
+/* @mentions stay readable on white. */
+.mention-pill {
+  border-radius: 6px;
+  background: rgb(108 108 245 / 0.25);
+  padding: 0 4px;
+  font-weight: 600;
+  color: #dee0fc;
+  box-shadow: inset 0 0 0 1px rgb(108 108 245 / 0.3);
+}
+html.light .mention-pill {
+  background: rgb(79 78 222 / 0.14);
+  color: #4338ca;
+  box-shadow: inset 0 0 0 1px rgb(79 78 222 / 0.25);
+}
+
 
 html,
 body,
@@ -252,6 +375,13 @@ body {
     radial-gradient(900px 480px at 95% 0%, rgb(167 139 250 / 0.1), transparent 60%),
     radial-gradient(800px 600px at 50% 115%, rgb(34 211 238 / 0.06), transparent 60%);
   background-attachment: fixed;
+}
+
+html.light body {
+  background-image:
+    radial-gradient(1100px 500px at 15% -10%, rgb(108 108 245 / 0.09), transparent 60%),
+    radial-gradient(900px 480px at 95% 0%, rgb(168 85 247 / 0.07), transparent 60%),
+    radial-gradient(800px 600px at 50% 115%, rgb(14 165 183 / 0.05), transparent 60%);
 }
 
 /* Pop-in for autocomplete menus, dropdowns and small dialogs */

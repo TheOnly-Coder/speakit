@@ -34,7 +34,7 @@ export function EmojiPicker({
   }, [q, allowExternal, serverEmojis, externalEmojis]);
 
   return (
-    <div className="menu-pop w-72 rounded-2xl border border-white/10 bg-[#14141b]/95 p-2.5 shadow-pop backdrop-blur-xl">
+    <div className="menu-pop w-72 rounded-2xl border border-white/10 bg-speakit-card/95 p-2.5 shadow-pop backdrop-blur-xl">
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}

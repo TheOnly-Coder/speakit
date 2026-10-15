@@ -336,10 +336,7 @@ function parseInline(text: string, resolveEmoji: EmojiResolver): React.ReactNode
       const m = /^@(everyone|here|[A-Za-z0-9_.]{1,32})/.exec(text.slice(i));
       if (m) {
         push(
-          <span
-            key={`k${inlineKey++}`}
-            className="rounded-md bg-speakit-blurple/25 px-1 font-semibold text-[#cfd2ff] ring-1 ring-speakit-blurple/30"
-          >
+          <span key={`k${inlineKey++}`} className="mention-pill">
             {m[0]}
           </span>
         );

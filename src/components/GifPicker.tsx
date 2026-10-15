@@ -79,7 +79,7 @@ export function GifPicker({ onPick }: { onPick: (gif: PickedGif) => void }) {
   const favUrls = new Set(favs.map((f) => f.url));
 
   return (
-    <div className="menu-pop w-80 rounded-2xl border border-white/10 bg-[#14141b]/95 p-2.5 shadow-pop backdrop-blur-xl">
+    <div className="menu-pop w-80 rounded-2xl border border-white/10 bg-speakit-card/95 p-2.5 shadow-pop backdrop-blur-xl">
       <div className="mb-2 flex gap-1 rounded-full border border-white/[0.06] bg-black/20 p-1">
         <button onClick={() => setTab("search")} className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-bold transition ${tab === "search" ? "brand-gradient text-white shadow-glow" : "text-speakit-muted hover:text-white"}`}>
           <Search size={13} /> Search

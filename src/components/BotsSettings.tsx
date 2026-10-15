@@ -297,7 +297,7 @@ function CreateBotModal({ onClose, onCreated }: { onClose: () => void; onCreated
                 key={c}
                 onClick={() => setAvatarColor(c)}
                 title={c}
-                className={`h-7 w-7 rounded-full ${avatarColor === c ? "ring-2 ring-white ring-offset-2 ring-offset-[#2b2d31]" : ""}`}
+                className={`h-7 w-7 rounded-full ${avatarColor === c ? "ring-2 ring-white ring-offset-2 ring-offset-speakit-card" : ""}`}
                 style={{ backgroundColor: c }}
               />
             ))}
@@ -728,7 +728,7 @@ function BotEditor({ summary, onChanged, onDeleted, onSecret }: {
           onChange={(e) => setCode(e.target.value.slice(0, MAX_BOT_CODE_LENGTH))}
           spellCheck={false}
           rows={16}
-          className="w-full rounded-md bg-[#111214] p-3 font-mono text-xs leading-relaxed text-speakit-text outline-none ring-1 ring-black/60 focus:ring-2 focus:ring-speakit-blurple"
+          className="w-full rounded-md bg-black/40 p-3 font-mono text-xs leading-relaxed text-speakit-text outline-none ring-1 ring-black/60 focus:ring-2 focus:ring-speakit-blurple"
         />
         <div className="mt-1 text-right text-[11px] text-speakit-muted">{code.length.toLocaleString()} / {MAX_BOT_CODE_LENGTH.toLocaleString()} chars</div>
       </Section>
@@ -749,7 +749,7 @@ function BotEditor({ summary, onChanged, onDeleted, onSecret }: {
           </button>
         </div>
         {testResult && (
-          <div className="mt-2 rounded-md bg-[#111214] p-2.5 font-mono text-[11px]">
+          <div className="mt-2 rounded-md bg-black/40 p-2.5 font-mono text-[11px]">
             {testResult.error && <div className="mb-1 text-red-400">Error: {testResult.error}</div>}
             {testResult.actions.length === 0 && !testResult.error && (
               <div className="text-speakit-muted">No reply — the code ignored this message. (Check your util.cmd names match the Commands above.)</div>

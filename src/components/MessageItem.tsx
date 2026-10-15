@@ -152,7 +152,7 @@ export const MessageItem = memo(function MessageItem({
         )}
       </div>
 
-      <div className="absolute -top-3 right-4 hidden items-center gap-0.5 rounded-full border border-white/10 bg-[#17171f]/95 p-1 shadow-pop backdrop-blur-xl group-hover:flex">
+      <div className="absolute -top-3 right-4 hidden items-center gap-0.5 rounded-full border border-white/10 bg-speakit-card/95 p-1 shadow-pop backdrop-blur-xl group-hover:flex">
         <button title="React" onClick={() => setShowEmoji((v) => !v)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-speakit-blurple/25 hover:text-amber-300"><Smile size={15} /></button>
         <button title={msg.pinned ? "Unpin" : "Pin"} onClick={() => onPin(msg)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-speakit-blurple/25 hover:text-amber-300"><Pin size={15} /></button>
         <button title="Reply" onClick={() => onReply(msg)} className="rounded-full p-1.5 text-speakit-muted transition hover:bg-speakit-blurple/25 hover:text-white"><Reply size={15} /></button>
@@ -161,7 +161,7 @@ export const MessageItem = memo(function MessageItem({
       </div>
 
       {showEmoji && (
-        <div className="menu-pop absolute right-4 top-8 z-10 flex gap-1 rounded-2xl border border-white/10 bg-[#17171f]/95 p-1.5 shadow-pop backdrop-blur-xl">
+        <div className="menu-pop absolute right-4 top-8 z-10 flex gap-1 rounded-2xl border border-white/10 bg-speakit-card/95 p-1.5 shadow-pop backdrop-blur-xl">
           {QUICK_EMOJIS.map((e) => (
             <button key={e} onClick={() => { onReact(msg, e); setShowEmoji(false); }} className="rounded-xl p-1.5 text-lg transition hover:scale-125 hover:bg-white/10">{e}</button>
           ))}

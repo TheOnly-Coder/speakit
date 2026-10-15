@@ -603,7 +603,7 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
       </div>
 
       <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="animate-fade-up relative mb-4 overflow-hidden rounded-3xl border border-white/10 p-6 shadow-pop sm:p-7" style={{ background: "linear-gradient(135deg,#4c1d95 0%,#6d28d9 30%,#6c6cf5 65%,#0ea5e9 130%)" }}>
+        <div className="animate-fade-up on-brand relative mb-4 overflow-hidden rounded-3xl border border-white/10 p-6 shadow-pop sm:p-7" style={{ background: "linear-gradient(135deg,#4c1d95 0%,#6d28d9 30%,#6c6cf5 65%,#0ea5e9 130%)" }}>
           <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-fuchsia-400/30 blur-3xl" />
           <h2 className="relative text-xl font-black tracking-tight text-white sm:text-2xl">Hey {user?.displayName} 👋</h2>

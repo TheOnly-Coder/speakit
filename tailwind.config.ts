@@ -5,20 +5,22 @@ export default {
     extend: {
       colors: {
         speakit: {
-          bg: "#0e0e13",
-          sidebar: "#14141b",
-          rail: "#0a0a0e",
-          card: "#17171f",
-          input: "#1d1d28",
+          // CSS-var driven surfaces: opacity modifiers (e.g. bg-speakit-rail/95)
+          // keep working in both dark and light mode automatically.
+          bg: "rgb(var(--sp-bg) / <alpha-value>)",
+          sidebar: "rgb(var(--sp-sidebar) / <alpha-value>)",
+          rail: "rgb(var(--sp-rail) / <alpha-value>)",
+          card: "rgb(var(--sp-card) / <alpha-value>)",
+          input: "rgb(var(--sp-input) / <alpha-value>)",
+          text: "rgb(var(--sp-text) / <alpha-value>)",
+          muted: "rgb(var(--sp-muted) / <alpha-value>)",
+          border: "rgb(var(--sp-border) / <alpha-value>)",
           blurple: "#6c6cf5",
           blurpleDark: "#4f4ede",
-          accent: "#a78bfa",
+          accent: "rgb(var(--sp-accent) / <alpha-value>)",
           accentPink: "#f472b6",
           accentCyan: "#22d3ee",
           green: "#22c55a",
-          text: "#eceaf2",
-          muted: "#9a9ab0",
-          border: "#26262f",
         },
       },
       fontFamily: {

@@ -427,7 +427,7 @@ export function MessageInput({
         </button>
       </div>
       {menu && rows.length > 0 && (
-        <div className="menu-pop absolute bottom-full left-2 right-2 z-20 mb-2 overflow-hidden rounded-2xl border border-white/10 bg-[#14141b]/95 shadow-pop backdrop-blur-xl sm:left-4 sm:w-80 sm:right-auto">
+        <div className="menu-pop absolute bottom-full left-2 right-2 z-20 mb-2 overflow-hidden rounded-2xl border border-white/10 bg-speakit-card/95 shadow-pop backdrop-blur-xl sm:left-4 sm:w-80 sm:right-auto">
           <div className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-speakit-muted">
             {menu.kind === "mention" ? "Mention — pick someone to ping" : "Bot commands — type to filter"}
           </div>

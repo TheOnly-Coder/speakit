@@ -100,7 +100,7 @@ export function QuickSwitcher({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center px-4 pt-[12dvh]">
       <div className="modal-backdrop absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="modal-pop relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-[#14141b]/95 shadow-pop backdrop-blur-xl">
+      <div className="modal-pop relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-speakit-card/95 shadow-pop backdrop-blur-xl">
         <div className="flex items-center gap-2.5 border-b border-white/[0.06] px-4 py-3.5">
           <span className="brand-gradient flex h-7 w-7 items-center justify-center rounded-lg shadow-glow">
             <Search size={14} className="text-white" />

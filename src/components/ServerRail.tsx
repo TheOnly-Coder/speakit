@@ -33,7 +33,7 @@ export function ServerRail({
         title="Home / DMs"
         className={cn(
           "group relative flex h-12 w-12 items-center justify-center transition-all duration-200 hover:scale-[1.05] active:scale-95",
-          view === "home" ? "rounded-2xl shadow-glow" : "rounded-full hover:rounded-2xl"
+          view === "home" ? "on-brand rounded-2xl shadow-glow" : "rounded-full hover:rounded-2xl"
         )}
         style={
           view === "home"
@@ -48,7 +48,7 @@ export function ServerRail({
           )}
         />
         <Home size={22} className="relative text-white" />
-        {view === "home" && <span className="absolute -left-[13px] h-10 w-1 rounded-r-full bg-white" />}
+        {view === "home" && <span className="absolute -left-[13px] h-10 w-1 rounded-r-full bg-gradient-to-b from-speakit-blurple to-speakit-accent" />}
       </button>
       <div className="h-0.5 w-8 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       {ordered.map((s) => (

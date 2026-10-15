@@ -391,7 +391,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
       {/* Discord-style: sidebar + content, full-height on desktop */}
       <div className="modal-pop relative m-auto flex h-[min(640px,92dvh)] max-h-[92dvh] w-[min(960px,94vw)] overflow-hidden rounded-3xl border border-white/10 bg-speakit-card/95 shadow-pop backdrop-blur-xl">
-        <div className="hidden w-56 shrink-0 flex-col border-r border-white/[0.06] bg-black/30 p-3 backdrop-blur sm:flex">
+        <div className="hidden w-56 shrink-0 flex-col border-r border-white/[0.06] bg-speakit-rail/50 p-3 backdrop-blur sm:flex">
           <div className="px-2 py-2 text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted">User Settings</div>
           {tabs.map((t) => (
             <button
@@ -524,7 +524,7 @@ function AppearanceTab() {
             onClick={() => { if ((theme === "dark") !== (t === "dark")) toggle(); }}
             className={`rounded-lg border-2 p-3 text-left ${theme === t ? "border-speakit-blurple" : "border-transparent bg-black/20"}`}
           >
-            <div className={`mb-2 h-12 rounded ${t === "dark" ? "bg-[#1e1f22]" : "bg-[#f2f3f5]"}`} />
+            <div className={`mb-2 h-12 rounded ${t === "dark" ? "bg-speakit-rail" : "bg-[#f2f3f5]"}`} />
             <div className="text-sm font-semibold capitalize text-white">{t}</div>
           </button>
         ))}

@@ -73,7 +73,7 @@ export function ContextMenuHost() {
       <div
         ref={ref}
         tabIndex={-1}
-        className="menu-pop fixed z-[91] w-[220px] overflow-hidden rounded-2xl border border-white/10 bg-[#14141b]/95 p-1.5 shadow-pop backdrop-blur-xl outline-none"
+        className="menu-pop fixed z-[91] w-[220px] overflow-hidden rounded-2xl border border-white/10 bg-speakit-card/95 p-1.5 shadow-pop backdrop-blur-xl outline-none"
         style={{ left: x, top: y }}
       >
         {state.items.map((it, i) => {

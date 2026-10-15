@@ -166,12 +166,12 @@ export function BrowseServersModal({ open, onClose }: { open: boolean; onClose: 
                   <img
                     src={s.iconUrl}
                     alt={s.name}
-                    className="h-12 w-12 rounded-2xl object-cover ring-4 ring-[#17171f]"
+                    className="h-12 w-12 rounded-2xl object-cover ring-4 ring-speakit-bg"
                     loading="lazy"
                   />
                 ) : (
                   <div
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl text-base font-black text-white ring-4 ring-[#17171f]"
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl text-base font-black text-white ring-4 ring-speakit-bg"
                     style={{ background: `linear-gradient(135deg, ${s.iconColor || "#6c6cf5"}, #7b5cf0)` }}
                   >
                     {(s.name || "?").slice(0, 2).toUpperCase()}

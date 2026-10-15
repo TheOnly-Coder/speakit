@@ -97,7 +97,7 @@ export function ServerMenu({
       </button>
 
       {open && (
-        <div className="menu-pop absolute left-2 right-2 top-full z-40 mt-1.5 overflow-hidden rounded-2xl border border-white/10 bg-[#121218]/95 p-1.5 shadow-pop backdrop-blur-xl">
+        <div className="menu-pop absolute left-2 right-2 top-full z-40 mt-1.5 overflow-hidden rounded-2xl border border-white/10 bg-speakit-card/95 p-1.5 shadow-pop backdrop-blur-xl">
           <button
             onClick={() => {
               setOpen(false);

@@ -30,7 +30,7 @@ export function Avatar({
         <div
           className="flex h-full w-full items-center justify-center rounded-full font-bold text-white ring-2 ring-white/10"
           style={{
-            background: `linear-gradient(135deg, ${color || "#6c6cf5"} 0%, ${color || "#6c6cf5"}cc 55%, #1a1a24 140%)`,
+            background: `linear-gradient(135deg, ${color || "#6c6cf5"} 0%, ${color || "#6c6cf5"}cc 55%, rgb(var(--sp-card)) 160%)`,
             fontSize: size * 0.36,
             letterSpacing: "-0.02em",
           }}
@@ -69,7 +69,7 @@ export function BotTag({ className }: { className?: string }) {
 
 export function ServerIcon({ name, color, active, unread }: { name: string; color: string; active?: boolean; unread?: boolean }) {
   return (
-    <div className="group relative flex items-center">
+    <div className="group on-brand relative flex items-center">
       <div
         className={cn(
           "absolute -left-[13px] w-1 rounded-r-full bg-gradient-to-b from-speakit-blurple to-speakit-accent transition-all duration-200",

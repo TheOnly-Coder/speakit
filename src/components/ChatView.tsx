@@ -599,7 +599,7 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
               <div
                 className="flex flex-col items-center gap-2 rounded-3xl border border-white/[0.06] p-3 shadow-card sm:p-5"
-                style={{ background: "linear-gradient(135deg, #6c6cf533, #17171f 70%)" }}
+                style={{ background: "linear-gradient(135deg, #6c6cf533, rgb(var(--sp-card)) 70%)" }}
               >
                 <Avatar name="You" color="#6c6cf5" size={56} />
                 <span className="text-center text-sm font-bold text-white">You {voice.selfMuted ? "(muted)" : ""}{voice.sharingSelf ? " • sharing" : ""}</span>
@@ -614,7 +614,7 @@ function VoiceChannelView({ channelId, serverId, channelName }: { channelId: str
                   <div
                     key={p.userId}
                     className="flex flex-col items-center gap-2 rounded-3xl border border-white/[0.06] p-3 shadow-card sm:p-5"
-                    style={{ background: `linear-gradient(135deg, ${p.avatarColor}33, #17171f 70%)` }}
+                    style={{ background: `linear-gradient(135deg, ${p.avatarColor}33, rgb(var(--sp-card)) 70%)` }}
                   >
                     <Avatar name={p.displayName} color={p.avatarColor} src={p.avatarUrl || undefined} size={56} />
                     <span className="max-w-full truncate text-center text-sm font-semibold text-white">{p.displayName}</span>
