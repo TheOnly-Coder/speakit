@@ -10,6 +10,7 @@ import { BOT_WORKER_SOURCE } from "./bot-core";
  *
  * Capabilities (enforced inside the worker): onMessage handlers, msg/api/
  * store/http/util only — no require/process/fetch/timers. Max 5 actions/run.
+ * http covers GET (text/JSON) plus POST JSON via http.postJson(url, body).
  */
 
 export type BotTriggerAuthor = {

@@ -167,6 +167,26 @@ export const BOT_EXAMPLES: { id: string; label: string; hint: string; code: stri
   }
 });`,
   },
+  {
+    id: "webhook",
+    label: "Webhook relay",
+    hint: "POSTs JSON with http.postJson",
+    code: `onMessage(async (msg, api) => {
+  if (msg.author.isBot) return;
+  const args = util.cmd(msg.content, "ship");
+  if (args === null) return;
+  try {
+    const res = await http.postJson("https://httpbin.org/post", {
+      text: args || msg.content,
+      user: msg.author.displayName,
+      channel: msg.channel.name,
+    });
+    await api.reply("Shipped! Server echoed \`" + (res.url || "ok") + "\`");
+  } catch (e) {
+    await api.reply("Webhook failed: " + e.message);
+  }
+});`,
+  },
 ];
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;

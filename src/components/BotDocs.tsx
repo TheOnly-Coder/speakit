@@ -142,7 +142,12 @@ export function BotDocs() {
       ]} />
 
       <H>7 · The http object (outside data)</H>
-      <P><Code text="http.getText(url)" /> and <Code text="http.getJson(url)" /> fetch public <b>https</b> URLs (6 s timeout, 200 KB max, JSON parsed for you). Always wrap in try/catch.</P>
+      <P><Code text="http.getText(url)" /> and <Code text="http.getJson(url)" /> fetch public <b>https</b> URLs (6 s timeout, 200 KB max, JSON parsed for you). <Code text="http.postJson(url, body)" /> POSTs JSON (object or pre-encoded string, 64 KB max) and returns the parsed JSON response — or <Code text="null" /> for empty bodies like <Code text="204 No Content" /> webhooks. Always wrap in try/catch.</P>
+      <Table rows={[
+        ["http.getText(url)", "GET an https URL, returns the raw text."],
+        ["http.getJson(url)", "GET an https URL, returns the parsed JSON."],
+        ["http.postJson(url, body)", "POST JSON to an https URL, returns parsed JSON (null when the response body is empty)."],
+      ]} />
       <Code lang="javascript" block text={`onMessage(async (msg, api) => {
   if (msg.author.isBot) return;
   if (util.cmd(msg.content, "joke") === null) return;
@@ -151,6 +156,22 @@ export function BotDocs() {
     await api.reply(j.setup + " — *" + j.punchline + "*");
   } catch (e) {
     await api.reply("No jokes right now.");
+  }
+});`} />
+      <Code lang="javascript" block text={`onMessage(async (msg, api) => {
+  if (msg.author.isBot) return;
+  const args = util.cmd(msg.content, "ship");
+  if (args === null) return;
+  try {
+    // Forward the message to any webhook / API that accepts JSON.
+    const res = await http.postJson("https://httpbin.org/post", {
+      text: args || msg.content,
+      user: msg.author.displayName,
+      channel: msg.channel.name,
+    });
+    await api.reply("Shipped! Server echoed \`" + (res.url || "ok") + "\`");
+  } catch (e) {
+    await api.reply("Webhook failed: " + e.message);
   }
 });`} />
 
@@ -204,6 +225,7 @@ curl -H "Authorization: Bot spk_YOUR_TOKEN" \\
       <ul className="mb-2 list-disc space-y-1 pl-5 text-[13px] text-speakit-text">
         <li>10 bots per account · 12 commands per bot · 20,000 chars of code.</li>
         <li>800 ms to load, 2.5 s per handler, max 5 answers per message. Slow code is cut off and logged.</li>
+        <li><Code text="http.*" /> only reaches public <b>https</b> URLs — localhost and private/internal IPs are blocked. 6 s per request, 64 KB POST bodies, 200 KB responses.</li>
         <li>No <Code text="require" />, <Code text="process" />, <Code text="fetch" />, sockets or timers — event-driven code only.</li>
         <li>Bots are clearly tagged BOT everywhere and can&apos;t DM, friend, or trigger each other.</li>
         <li>Only the bot owner can edit code. Never paste code you don&apos;t understand — it runs on the server.</li>

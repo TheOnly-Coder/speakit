@@ -146,7 +146,40 @@ export function botWorkerMain(): void {
         },
       };
 
-      const httpGet = async (url: string, asJson: boolean): Promise<unknown> => {
+      // SSRF guard: bots may only talk to public https hosts. Literal
+      // loopback / private / link-local IPs and localhost names are rejected
+      // (names that merely *resolve* privately are the deployer's firewall job).
+      const isBlockedHost = (hostname: string): boolean => {
+        let h = hostname.trim().toLowerCase();
+        if (h.endsWith(".")) h = h.slice(0, -1);
+        if (h.startsWith("[") && h.endsWith("]")) h = h.slice(1, -1);
+        if (h === "localhost" || h.endsWith(".localhost")) return true;
+        if (h === "::1" || h === "::" || h === "0:0:0:0:0:0:0:1") return true;
+        if (h.includes(":")) return false; // other IPv6 literals: leave to the firewall
+        const parts = h.split(".");
+        if (parts.length !== 4) return false; // not a literal IP — a DNS name
+        const nums: number[] = [];
+        for (const p of parts) {
+          if (!p) return false;
+          let n: number;
+          if (/^0x[0-9a-f]+$/i.test(p)) n = parseInt(p, 16);
+          else if (/^0[0-7]+$/.test(p) && p.length > 1) n = parseInt(p, 8);
+          else if (/^\d+$/.test(p)) n = parseInt(p, 10);
+          else return false; // DNS name with 4 labels — allow
+          if (!Number.isSafeInteger(n) || n < 0 || n > 255) return false;
+          nums.push(n);
+        }
+        const a = nums[0];
+        const b = nums[1];
+        if (a === 127 || a === 10) return true; // loopback / private
+        if (a === 172 && b >= 16 && b <= 31) return true; // private
+        if (a === 192 && b === 168) return true; // private
+        if (a === 169 && b === 254) return true; // link-local + cloud metadata
+        if (a === 0) return true; // 0.0.0.0/8
+        return false;
+      };
+
+      const checkUrl = (url: unknown): string => {
         let parsed: URL;
         try {
           parsed = new URL(String(url));
@@ -154,18 +187,35 @@ export function botWorkerMain(): void {
           throw new Error("http: invalid URL");
         }
         if (parsed.protocol !== "https:") throw new Error("http: https URLs only");
+        if (isBlockedHost(parsed.hostname)) throw new Error("http: private/internal URLs are blocked");
+        return parsed.toString();
+      };
+
+      const httpRequest = async (
+        url: unknown,
+        init: { method: "GET" | "POST"; bodyText?: string },
+        asJson: boolean
+      ): Promise<unknown> => {
+        const finalUrl = checkUrl(url);
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 6000);
         try {
-          const res = await fetch(parsed.toString(), {
+          const res = await fetch(finalUrl, {
+            method: init.method,
             signal: ctrl.signal,
-            headers: { "User-Agent": "SpeakitBot/1.0" },
+            headers: {
+              "User-Agent": "SpeakitBot/1.0",
+              Accept: "application/json, text/plain, */*",
+              ...(init.method === "POST" ? { "Content-Type": "application/json" } : {}),
+            },
+            ...(init.bodyText === undefined ? {} : { body: init.bodyText }),
             redirect: "follow",
           });
           if (!res.ok) throw new Error(`http: upstream responded ${res.status}`);
           const text = await res.text();
           if (text.length > 200_000) throw new Error("http: response too large (200KB max)");
           if (!asJson) return text;
+          if (!text.trim()) return null; // e.g. 204 No Content from webhooks
           try {
             return JSON.parse(text);
           } catch {
@@ -179,9 +229,30 @@ export function botWorkerMain(): void {
         }
       };
 
+      const httpGet = (url: unknown, asJson: boolean): Promise<unknown> =>
+        httpRequest(url, { method: "GET" }, asJson);
+
+      const httpPostJson = (url: unknown, body: unknown): Promise<unknown> => {
+        let bodyText: string;
+        if (typeof body === "string") {
+          bodyText = body; // assume pre-encoded JSON
+        } else {
+          try {
+            const s = JSON.stringify(body);
+            if (typeof s !== "string") throw new Error("unserializable");
+            bodyText = s;
+          } catch {
+            throw new Error("http.postJson: body must be JSON-serializable (object, array, string, number…)");
+          }
+        }
+        if (bodyText.length > 64_000) throw new Error("http.postJson: body too large (64KB max)");
+        return httpRequest(url, { method: "POST", bodyText }, true);
+      };
+
       const httpForBot = {
         getText: (url: unknown) => httpGet(String(url), false),
         getJson: (url: unknown) => httpGet(String(url), true),
+        postJson: (url: unknown, body: unknown) => httpPostJson(url, body),
       };
 
       const utilForBot = Object.freeze({
