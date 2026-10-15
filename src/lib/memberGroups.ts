@@ -63,18 +63,32 @@ function byStatusThenName(a: MemberItem, b: MemberItem): number {
  * Groups members by top role (each member appears once), roles keep their
  * position order. Owners with no roles get their own top group; everyone
  * else without roles lands in MEMBER at the bottom.
+ *
+ * Offline is a VIRTUAL group, not a real Role row:
+ * - anyone whose visible status is "offline" (truly offline OR invisible —
+ *   the API already maps invisible → offline via visibleStatus) is shown in
+ *   the trailing "Offline" group, no matter which roles they hold.
+ * - their roles are NOT removed; coming back online puts them straight back
+ *   into their normal role category.
+ * - because it is virtual, it can never be edited, renamed, or assigned —
+ *   role editors only ever iterate real `roles`, and the API rejects creating
+ *   a role named "offline" (see RESERVED_ROLE_NAMES).
  */
 export function groupMembers(
   members: MemberItem[],
   roles: RoleItem[],
   opts?: { ownerId?: string }
 ): MemberGroup[] {
+  const isOffline = (m: MemberItem) => (m.status ?? "offline") === "offline";
+  const online = members.filter((m) => !isOffline(m));
+  const offline = members.filter((m) => isOffline(m)).sort((a, b) => a.displayName.localeCompare(b.displayName));
+
   const groups: MemberGroup[] = [];
   const placed = new Set<string>();
 
   const ownerId = opts?.ownerId;
   if (ownerId) {
-    const owner = members.find((m) => m.id === ownerId);
+    const owner = online.find((m) => m.id === ownerId);
     if (owner && topRoleFor(owner, roles) === null) {
       groups.push({ key: "__owner", name: "Owner", color: null, members: [owner] });
       placed.add(owner.id);
@@ -82,7 +96,7 @@ export function groupMembers(
   }
 
   for (const role of roles) {
-    const bucket = members
+    const bucket = online
       .filter((m) => !placed.has(m.id) && topRoleFor(m, roles)?.id === role.id)
       .sort(byStatusThenName);
     if (bucket.length === 0) continue;
@@ -95,9 +109,15 @@ export function groupMembers(
     });
   }
 
-  const rest = members.filter((m) => !placed.has(m.id)).sort(byStatusThenName);
+  const rest = online.filter((m) => !placed.has(m.id)).sort(byStatusThenName);
   if (rest.length > 0) {
     groups.push({ key: "__member", name: "Member", color: null, members: rest });
+  }
+
+  // Virtual, non-editable trailing group. Membership here is purely presence
+  // derived — roles are preserved underneath.
+  if (offline.length > 0) {
+    groups.push({ key: "__offline", name: "Offline", color: null, members: offline });
   }
   return groups;
 }

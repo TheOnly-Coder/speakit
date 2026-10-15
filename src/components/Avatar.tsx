@@ -67,6 +67,21 @@ export function BotTag({ className }: { className?: string }) {
   );
 }
 
+/** Forced AI contact badge (big-pickle, free). */
+export function AITag({ className }: { className?: string }) {
+  return (
+    <span
+      title="Built-in helper · big-pickle (free)"
+      className={cn(
+        "inline-flex shrink-0 items-center rounded-md bg-gradient-to-r from-violet-500 to-fuchsia-500 px-1.5 py-px text-[10px] font-extrabold uppercase leading-tight tracking-wide text-white shadow-sm",
+        className
+      )}
+    >
+      AI
+    </span>
+  );
+}
+
 export function ServerIcon({ name, color, active, unread }: { name: string; color: string; active?: boolean; unread?: boolean }) {
   return (
     <div className="group on-brand relative flex items-center">

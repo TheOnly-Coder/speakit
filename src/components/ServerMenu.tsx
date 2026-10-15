@@ -45,7 +45,7 @@ export function ServerMenu({
   if (!serverDetail) return <div className="h-12 bg-speakit-sidebar" />;
 
   const myPerms = myServerPerms(serverDetail, user?.id);
-  const canOpenSettings = ["manageServer", "manageChannels", "manageRoles", "manageEmoji", "kickMembers", "banMembers"].some((p) =>
+  const canOpenSettings = ["manageServer", "manageChannels", "manageRoles", "manageEmoji", "kickMembers", "banMembers", "timeoutMembers"].some((p) =>
     myPerms.has(p)
   );
   const canManageChannels = myPerms.has("manageChannels");

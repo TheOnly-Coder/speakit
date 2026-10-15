@@ -4,7 +4,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Reply, Pencil, Trash2, Smile, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/lib/utils";
-import { Avatar, BotTag } from "./Avatar";
+import { Avatar, BotTag, AITag } from "./Avatar";
 import { emojiUrlFor } from "@/lib/emoji";
 import { MarkdownContent } from "@/lib/discordMarkdown";
 import { previewForMessage, shouldShowBody } from "@/lib/messagePreview";
@@ -102,7 +102,7 @@ export const MessageItem = memo(function MessageItem({
             style={authorColor ? { color: authorColor } : undefined}
           >
             <span className="truncate">{msg.author.displayName}</span>
-            {msg.author.isBot && <BotTag />}
+            {(msg.author.username?.toLowerCase() === "ai" ? <AITag /> : msg.author.isBot && <BotTag />)}
           </button>
           <span className="shrink-0 text-[11px] font-medium text-speakit-muted/70">@{msg.author.username}{showTimestamps ? ` • ${formatTime(msg.createdAt)}` : ""}</span>
           {msg.edited && <span className="text-[10px] italic text-speakit-muted/70">(edited)</span>}

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
 import { sanitizeAttachments } from "@/lib/attachments";
 import { visibleStatus } from "@/lib/presence";
+import { getAIUser } from "@/lib/ai";
 import { z } from "zod";
 
 export async function GET(req: Request, { params }: { params: { conversationId: string } }) {
@@ -25,8 +26,11 @@ export async function GET(req: Request, { params }: { params: { conversationId: 
     take: limit,
   });
   const other = convo.participantAId === userId ? convo.participantB : convo.participantA;
+  const ai = await getAIUser().catch(() => null);
+  const isAI = !!ai && other.id === ai.id;
   return NextResponse.json({
-    other: { id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl, status: visibleStatus(other.status, other.id) },
+    other: { id: other.id, username: other.username, displayName: other.displayName, avatarColor: other.avatarColor, avatarUrl: other.avatarUrl, status: isAI ? "online" : visibleStatus(other.status, other.id), isBot: !!(other as { isBot?: boolean }).isBot, isAI },
+    isAI,
     messages: messages.reverse().map((m) => ({
       id: m.id,
       content: m.content,

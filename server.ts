@@ -8,6 +8,7 @@ import { sanitizeAttachments } from "./src/lib/attachments";
 import { canInChannel } from "./src/lib/channelPerms";
 import { presenceOnline, presenceOffline, presenceSockets, visibleStatus, markAutoIdle, clearAutoIdle, isAutoIdle } from "./src/lib/presence";
 import { handleBotTriggers } from "./src/lib/bots/executor";
+import { getAIUser, generateAIReply, handleFounderReply } from "./src/lib/ai";
 
 const dev = process.env.NODE_ENV !== "production";
 // Always bind all interfaces. Hosts like Render/Docker set HOSTNAME to a
@@ -78,15 +79,19 @@ async function memberCan(userId: string, serverId: string, perm: string): Promis
   });
   if (!member) return false;
   if (member.role === "owner") return true;
+  const perms = new Set<string>();
   for (const mr of member.memberRoles) {
     try {
       const list = JSON.parse(mr.role.permissions) as string[];
-      if (list.includes(perm)) return true;
+      for (const p of list) perms.add(p);
     } catch {
       /* ignore */
     }
   }
-  return false;
+  if (perms.has("administrator")) return true;
+  // Legacy alias: Manage Messages covers the old Manage Pins.
+  if (perm === "managePins" && perms.has("manageMessages")) return true;
+  return perms.has(perm);
 }
 
 async function isServerMember(userId: string, serverId: string) {
@@ -685,6 +690,71 @@ void app.prepare().then(() => {
           io.to(`user:${otherId}`).emit("dm:notify", { conversationId: convo.id, message: out });
           io.to(`user:${userId}`).emit("dm:notify", { conversationId: convo.id, message: out });
           ack?.({ ok: true, message: out });
+          // ---- Speakit AI (big-pickle, free, per-user isolated) ----
+          // If the recipient is the forced AI contact, answer in this same DM
+          // using ONLY this user's AI history. If the sender is a founder
+          // replying inside their own AI DM, try to forward it to the
+          // waiting requester (only founder replies ever reach the user).
+          void (async () => {
+            try {
+              const ai = await getAIUser().catch(() => null);
+              if (!ai) return;
+              const otherIsAI = otherId === ai.id;
+              if (otherIsAI && content) {
+                const sender = await prisma.user.findUnique({ where: { id: userId } });
+                const history = await prisma.directMessage.findMany({
+                  where: { conversationId: convo.id },
+                  orderBy: { createdAt: "desc" },
+                  take: 20,
+                });
+                const hist = history
+                  .reverse()
+                  .slice(0, -1)
+                  .slice(-12)
+                  .map((m) => ({
+                    role: (m.authorId === ai.id ? "assistant" : "user") as "assistant" | "user",
+                    content: m.content,
+                  }));
+                // Typing indicator while Big Pickle "thinks".
+                io.to(`dm:${convo.id}`).emit("dm:typing:update", { conversationId: convo.id, userId: ai.id, typing: true });
+                let reply: { text: string; escalated: boolean; escalationId?: string };
+                try {
+                  reply = await generateAIReply({
+                    userId,
+                    username: sender?.username ?? "someone",
+                    userMessage: content,
+                    history: hist,
+                  });
+                } finally {
+                  io.to(`dm:${convo.id}`).emit("dm:typing:update", { conversationId: convo.id, userId: ai.id, typing: false });
+                }
+                const aiDm = await prisma.directMessage.create({
+                  data: { conversationId: convo.id, authorId: ai.id, content: reply.text.slice(0, 1500) },
+                  include: { author: true, attachments: true },
+                });
+                await prisma.directConversation.update({ where: { id: convo.id }, data: { updatedAt: new Date() } });
+                const aiOut = {
+                  id: aiDm.id,
+                  content: aiDm.content,
+                  conversationId: convo.id,
+                  edited: false,
+                  createdAt: aiDm.createdAt,
+                  author: { id: ai.id, username: ai.username, displayName: ai.displayName, avatarColor: ai.avatarColor, avatarUrl: ai.avatarUrl },
+                  attachments: [],
+                };
+                io.to(`dm:${convo.id}`).emit("dm:message:new", aiOut);
+                io.to(`user:${userId}`).emit("dm:notify", { conversationId: convo.id, message: aiOut });
+                return;
+              }
+              // Founder answering inside their AI DM → forward to requester.
+              if (!otherIsAI && content) {
+                const fwd = await handleFounderReply(userId, convo.id, content).catch(() => null);
+                void fwd;
+              }
+            } catch (e) {
+              console.error("ai reply failed", e);
+            }
+          })();
           void (async () => {
             try {
               const muted = await prisma.mute.findUnique({

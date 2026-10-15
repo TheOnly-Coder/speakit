@@ -33,6 +33,15 @@ export async function channelPermissions(
   });
   if (!member) return new Set();
   if (member.role === "owner") return new Set(CHANNEL_PERMS);
+  // Administrator bypasses channel restrictions (Discord-like).
+  try {
+    for (const mr of member.memberRoles) {
+      const list = JSON.parse((mr.role as { permissions?: string }).permissions ?? "[]") as string[];
+      if (list.includes("administrator")) return new Set(CHANNEL_PERMS);
+    }
+  } catch {
+    /* ignore malformed role */
+  }
 
   const overwrites = await prisma.channelOverwrite.findMany({ where: { channelId: channel.id } });
   const allowed = baseAllowed(channel.type);
@@ -68,10 +77,18 @@ type LightChannel = { id: string; serverId: string; type: string };
 export async function visibleChannels<T extends LightChannel>(userId: string, serverId: string, channels: T[]): Promise<T[]> {
   const member = await prisma.serverMember.findUnique({
     where: { userId_serverId: { userId, serverId } },
-    include: { memberRoles: { select: { roleId: true } } },
+    include: { memberRoles: { include: { role: true } } },
   });
   if (!member) return [];
   if (member.role === "owner") return channels;
+  for (const mr of member.memberRoles) {
+    try {
+      const list = JSON.parse(mr.role.permissions) as string[];
+      if (list.includes("administrator")) return channels;
+    } catch {
+      /* ignore */
+    }
+  }
   const roleIds = new Set(member.memberRoles.map((r) => r.roleId));
   const overwrites = await prisma.channelOverwrite.findMany({ where: { channelId: { in: channels.map((c) => c.id) } } });
   const byChannel = new Map<string, { target: string; allow: string[]; deny: string[] }[]>();

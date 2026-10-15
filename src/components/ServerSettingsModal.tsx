@@ -10,7 +10,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { myServerPerms } from "@/lib/clientPerms";
 import { getSocket } from "@/lib/socket";
 import { displayColorFor } from "@/lib/memberGroups";
-import { PERMISSIONS, PERMISSION_LABELS, type Permission } from "@/lib/permissions";
+import { PERMISSION_CATEGORIES, PERMISSION_DESCRIPTIONS, PERMISSION_LABELS, type Permission } from "@/lib/permissions";
 
 const ALL_TABS = [
   { id: "Overview", perm: "manageServer" },
@@ -40,7 +40,7 @@ export function ServerSettingsModal({ open, onClose }: { open: boolean; onClose:
     if (!perm) {
       return (
         serverDetail?.ownerId === user?.id ||
-        ["manageRoles", "kickMembers", "banMembers"].some((p) => myPerms.has(p))
+        ["manageRoles", "kickMembers", "banMembers", "timeoutMembers"].some((p) => myPerms.has(p))
       );
     }
     return myPerms.has(perm);
@@ -52,7 +52,7 @@ export function ServerSettingsModal({ open, onClose }: { open: boolean; onClose:
       const first = ALL_TABS.find((t) =>
         t.perm === null
           ? serverDetail?.ownerId === user?.id ||
-            ["manageRoles", "kickMembers", "banMembers"].some((p) => myPerms.has(p))
+            ["manageRoles", "kickMembers", "banMembers", "timeoutMembers"].some((p) => myPerms.has(p))
           : myPerms.has(t.perm)
       );
       setTab(first?.id ?? "Overview");
@@ -380,7 +380,11 @@ function RolesTab({ refresh }: { refresh: () => Promise<void> }) {
   };
 
   return (
-    <div className="flex gap-3">
+    <div>
+      <div className="mb-2 rounded-md bg-white/[0.04] px-2.5 py-2 text-[11px] leading-relaxed text-speakit-muted">
+        <span className="font-bold text-white">Offline</span> is automatic — invisible or offline members appear there (dimmed) but keep their roles. It can&apos;t be edited or assigned.
+      </div>
+      <div className="flex gap-3">
       <div className="w-40 shrink-0">
         <div className="mb-1 flex gap-1">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New role" className={inputCls} maxLength={32} />
@@ -405,6 +409,7 @@ function RolesTab({ refresh }: { refresh: () => Promise<void> }) {
       <div className="min-w-0 flex-1">
         {!selected && <div className="text-sm text-speakit-muted">Select a role to edit its permissions.</div>}
         {selected && <RoleEditor key={selected.id} role={selected} refresh={refresh} />}
+      </div>
       </div>
     </div>
   );
@@ -468,13 +473,47 @@ function RoleEditor({ role, refresh }: { role: RoleItem; refresh: () => Promise<
         <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-10 cursor-pointer rounded bg-transparent" title="Role color" />
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={32} />
       </div>
-      <div className="mb-2 space-y-1">
-        {PERMISSIONS.map((p) => (
-          <label key={p} className="flex cursor-pointer items-center justify-between rounded bg-speakit-input px-3 py-1.5 text-sm">
-            <span className="text-white">{PERMISSION_LABELS[p as Permission]}</span>
-            <input type="checkbox" checked={perms.includes(p)} onChange={() => toggle(p)} className="h-4 w-4 accent-[#5865f2]" />
-          </label>
+      <div className="mb-2 space-y-3">
+        {PERMISSION_CATEGORIES.map((cat) => (
+          <div key={cat.title}>
+            <div className="mb-1 flex items-center justify-between px-1">
+              <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted">{cat.title}</span>
+              <button
+                onClick={() => {
+                  // "Clear permissions" per section — mirrors the screenshot link.
+                  setPerms((prev) => prev.filter((p) => !(cat.perms as string[]).includes(p)));
+                }}
+                className="text-[11px] text-speakit-muted hover:text-white"
+                title={`Clear ${cat.title}`}
+              >
+                Clear permissions
+              </button>
+            </div>
+            <div className="space-y-1">
+              {cat.perms.map((p) => (
+                <label key={p} className="flex cursor-pointer items-center justify-between gap-3 rounded bg-speakit-input px-3 py-2 text-sm">
+                  <span>
+                    <span className="block font-semibold text-white">{PERMISSION_LABELS[p as Permission]}</span>
+                    <span className="block text-[11px] font-normal text-speakit-muted">{PERMISSION_DESCRIPTIONS[p as Permission]}</span>
+                  </span>
+                  <input type="checkbox" checked={perms.includes(p)} onChange={() => toggle(p)} className="h-4 w-4 shrink-0 accent-[#5865f2]" />
+                </label>
+              ))}
+            </div>
+          </div>
         ))}
+        {perms.includes("managePins") && (
+          <div>
+            <div className="mb-1 px-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted">Legacy</div>
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded bg-speakit-input px-3 py-2 text-sm">
+              <span>
+                <span className="block font-semibold text-white">{PERMISSION_LABELS.managePins}</span>
+                <span className="block text-[11px] font-normal text-speakit-muted">{PERMISSION_DESCRIPTIONS.managePins}</span>
+              </span>
+              <input type="checkbox" checked={perms.includes("managePins")} onChange={() => toggle("managePins")} className="h-4 w-4 shrink-0 accent-[#5865f2]" />
+            </label>
+          </div>
+        )}
       </div>
       {msg && <div className="mb-2 text-xs text-green-400">{msg}</div>}
       <div className="flex gap-2">

@@ -3,12 +3,29 @@
 const ALL_PERMS = [
   "manageChannels",
   "manageRoles",
+  "manageEmoji",
   "manageServer",
-  "manageMessages",
-  "managePins",
+  "createInvite",
+  "changeNickname",
+  "manageNicknames",
   "kickMembers",
   "banMembers",
-  "manageEmoji",
+  "timeoutMembers",
+  "sendMessages",
+  "embedLinks",
+  "attachFiles",
+  "addReactions",
+  "useExternalEmoji",
+  "createPolls",
+  "mentionEveryone",
+  "manageMessages",
+  "readMessageHistory",
+  "connect",
+  "speak",
+  "muteMembers",
+  "moveMembers",
+  "administrator",
+  "managePins",
 ] as const;
 
 export type PermView = {
@@ -17,7 +34,7 @@ export type PermView = {
   members: { id: string; role: string; roleIds: string[] }[];
 };
 
-/** Client-safe: union of a member's role permissions (owner gets everything). */
+/** Client-safe: union of a member's role permissions (owner + Administrator get everything). */
 export function myServerPerms(detail: PermView, userId: string | undefined): Set<string> {
   if (!userId) return new Set();
   const me = detail.members.find((m) => m.id === userId);
@@ -29,5 +46,8 @@ export function myServerPerms(detail: PermView, userId: string | undefined): Set
       for (const p of role.permissions) perms.add(p);
     }
   }
+  if (perms.has("administrator")) return new Set<string>([...ALL_PERMS]);
+  // Legacy alias: Manage Messages implies Manage Pins.
+  if (perms.has("manageMessages")) perms.add("managePins");
   return perms;
 }

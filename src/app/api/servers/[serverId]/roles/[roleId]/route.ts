@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
-import { hasPermission, PERMISSIONS } from "@/lib/permissions";
+import { hasPermission, PERMISSIONS, isReservedRoleName } from "@/lib/permissions";
 import { z } from "zod";
 
 const patchSchema = z.object({
@@ -28,7 +28,12 @@ export async function PATCH(req: Request, { params }: { params: { serverId: stri
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid role data" }, { status: 400 });
   const data: Record<string, unknown> = {};
-  if (parsed.data.name !== undefined) data.name = parsed.data.name.trim().slice(0, 32);
+  if (parsed.data.name !== undefined) {
+    if (isReservedRoleName(parsed.data.name)) {
+      return NextResponse.json({ error: `"${parsed.data.name.trim()}" is reserved for the automatic Offline group and can't be used` }, { status: 400 });
+    }
+    data.name = parsed.data.name.trim().slice(0, 32);
+  }
   if (parsed.data.color !== undefined) data.color = parsed.data.color;
   if (parsed.data.permissions !== undefined) {
     data.permissions = JSON.stringify(parsed.data.permissions.filter((p) => (PERMISSIONS as readonly string[]).includes(p)));

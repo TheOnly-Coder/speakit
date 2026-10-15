@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
 import { avatarColorFor, normalizeUsername, ensureForceJoin } from "@/lib/auth";
+import { ensureAIConversation } from "@/lib/ai";
 import { registerSchema } from "@/lib/validations";
 import { toSafeUser } from "@/lib/types";
 
@@ -101,6 +102,11 @@ export async function POST(req: Request) {
           });
         }
         await ensureForceJoin(profile.id);
+        try {
+          await ensureAIConversation(profile.id);
+        } catch {
+          /* AI seed must never block registration */
+        }
         return NextResponse.json({ user: toSafeUser(profile) });
       } catch (e) {
         // Don't leave an orphan Auth user that blocks retries with
@@ -176,6 +182,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ needsConfirmation: true, email });
     }
     await ensureForceJoin(profile.id);
+    try {
+      await ensureAIConversation(profile.id);
+    } catch {
+      /* AI seed must never block registration */
+    }
     return NextResponse.json({ user: toSafeUser(profile) });
   } catch (e) {
     console.error("register error", e);

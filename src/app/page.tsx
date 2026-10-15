@@ -649,28 +649,35 @@ function HomeDashboard({ onAddFriend, onNewDM, onOpenDM }: { onAddFriend: () => 
               </div>
             )}
             <div className="mb-6 space-y-1.5">
-              {conversations.slice(0, 8).map((c) => (
+              {conversations.slice(0, 8).map((c) => {
+                const isAI = !!(c.isAI || (c.other as { isAI?: boolean }).isAI || c.other.username?.toLowerCase() === "ai");
+                return (
                 <div key={c.id} className="group flex w-full items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 text-left shadow-card transition hover:border-white/[0.12] hover:bg-white/[0.06]">
                   <button onClick={() => onOpenDM(c.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                     <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={40} status={c.other.status} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold text-white">{c.other.displayName}</div>
+                      <div className="text-sm font-bold text-white">{c.other.displayName}{isAI ? " ✨" : ""}</div>
                       <div className="truncate text-xs text-speakit-muted">{previewForMessage(c.lastMessage, c.attachments ?? []) || "No messages yet"}</div>
                     </div>
                   </button>
+                  {!isAI && (
                   <button
                     title="Close conversation"
                     onClick={async () => {
                       if (!confirm("Close this conversation? (Messages are deleted)")) return;
-                      await fetch(`/api/dms/${c.id}`, { method: "DELETE" });
+                      const res = await fetch(`/api/dms/${c.id}`, { method: "DELETE" });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) alert(data.error ?? "Couldn't close conversation");
                       await useAppStore.getState().refreshDMs();
                     }}
                     className="hidden rounded p-1 text-xs text-speakit-muted hover:text-red-400 group-hover:block"
                   >
                     ✕
                   </button>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
 import { normalizeUsername, ensureForceJoin } from "@/lib/auth";
+import { ensureAIConversation } from "@/lib/ai";
 import { loginSchema } from "@/lib/validations";
 import { toSafeUser } from "@/lib/types";
 
@@ -37,6 +38,11 @@ export async function POST(req: Request) {
     const profile = await prisma.user.findUnique({ where: { authId: data.user.id } });
     if (!profile) return NextResponse.json({ error: "Account profile missing — please register again" }, { status: 404 });
     await ensureForceJoin(profile.id);
+    try {
+      await ensureAIConversation(profile.id);
+    } catch {
+      /* AI seed must never block login */
+    }
     return NextResponse.json({ user: toSafeUser(profile) });
   } catch (e) {
     console.error("login error", e);

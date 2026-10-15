@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/auth";
-import { hasPermission, PERMISSIONS } from "@/lib/permissions";
+import { hasPermission, PERMISSIONS, isReservedRoleName } from "@/lib/permissions";
 import { z } from "zod";
 
 const roleSchema = z.object({
@@ -43,6 +43,9 @@ export async function POST(req: Request, { params }: { params: { serverId: strin
   const body = await req.json();
   const parsed = roleSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Role name is required" }, { status: 400 });
+  if (isReservedRoleName(parsed.data.name)) {
+    return NextResponse.json({ error: `"${parsed.data.name.trim()}" is reserved for the automatic Offline group and can't be used` }, { status: 400 });
+  }
   const perms = parsed.data.permissions.filter((p) => (PERMISSIONS as readonly string[]).includes(p));
   const count = await prisma.role.count({ where: { serverId: params.serverId } });
   const role = await prisma.role.create({

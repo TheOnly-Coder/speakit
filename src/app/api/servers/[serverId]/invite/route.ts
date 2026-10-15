@@ -4,12 +4,16 @@ import { getSessionUserId } from "@/lib/auth";
 import { generateInviteCode } from "@/lib/invite";
 import { hasPermission } from "@/lib/permissions";
 
-/** Regenerate the invite code (requires Manage server). */
+/** Regenerate the invite code (requires Manage server or Create Invite). */
 export async function POST(_req: Request, { params }: { params: { serverId: string } }) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!(await hasPermission(userId, params.serverId, "manageServer"))) {
-    return NextResponse.json({ error: "Missing permission: Manage server" }, { status: 403 });
+  const [canManage, canInvite] = await Promise.all([
+    hasPermission(userId, params.serverId, "manageServer"),
+    hasPermission(userId, params.serverId, "createInvite"),
+  ]);
+  if (!canManage && !canInvite) {
+    return NextResponse.json({ error: "Missing permission: Create Invite" }, { status: 403 });
   }
   for (let i = 0; i < 5; i++) {
     const code = generateInviteCode();

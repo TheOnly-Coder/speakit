@@ -1,11 +1,11 @@
 "use client";
 
-import { Users, Plus, UserPlus } from "lucide-react";
+import { Users, Plus, UserPlus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { previewForMessage } from "@/lib/messagePreview";
 import { useAppStore } from "@/store/useAppStore";
 import { useProfileStore } from "@/store/useProfileStore";
-import { Avatar } from "./Avatar";
+import { Avatar, AITag } from "./Avatar";
 import { UserArea } from "./UserArea";
 import { ctxProps } from "./ContextMenu";
 
@@ -64,6 +64,7 @@ export function DMSidebar({
         {conversations.map((c) => {
           const pings = dmMentionCounts[c.id] ?? 0;
           const active = activeDMId === c.id;
+          const isAI = !!(c.isAI || (c.other as { isAI?: boolean }).isAI || c.other.username?.toLowerCase() === "ai");
           return (
             <div
               key={c.id}
@@ -71,14 +72,22 @@ export function DMSidebar({
                 "group flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-all duration-150",
                 active
                   ? "bg-gradient-to-r from-speakit-blurple/25 to-speakit-accent/10 shadow-card ring-1 ring-white/10"
-                  : "hover:bg-white/[0.06]"
+                  : "hover:bg-white/[0.06]",
+                isAI && "ring-1 ring-violet-500/30"
               )}
-              {...ctxProps(() => [
-                { type: "header" as const, label: c.other.displayName },
-                { type: "item" as const, label: "View Profile", onClick: () => useProfileStore.getState().openProfile(c.other.id) },
-                { type: "sep" as const },
-                { type: "item" as const, label: "Close Conversation", danger: true, onClick: () => void closeDM(c.id) },
-              ])}
+              {...ctxProps(() =>
+                isAI
+                  ? [
+                      { type: "header" as const, label: "AI — built-in helper" },
+                      { type: "item" as const, label: "Open AI chat", onClick: () => setActiveDM(c.id) },
+                    ]
+                  : [
+                      { type: "header" as const, label: c.other.displayName },
+                      { type: "item" as const, label: "View Profile", onClick: () => useProfileStore.getState().openProfile(c.other.id) },
+                      { type: "sep" as const },
+                      { type: "item" as const, label: "Close Conversation", danger: true, onClick: () => void closeDM(c.id, false) },
+                    ]
+              )}
             >
               <button
                 onClick={() => {
@@ -89,18 +98,24 @@ export function DMSidebar({
               >
                 <Avatar name={c.other.displayName} color={c.other.avatarColor} src={c.other.avatarUrl || undefined} size={36} status={c.other.status} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-white">{c.other.displayName}</div>
-                  <div className="truncate text-[11px] text-speakit-muted">{previewForMessage(c.lastMessage, c.attachments ?? []) || "Start a conversation"}</div>
+                  <div className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
+                    <span className="truncate">{c.other.displayName}</span>
+                    {isAI && <AITag />}
+                  </div>
+                  <div className="truncate text-[11px] text-speakit-muted">{isAI && !c.lastMessage ? "Ask me anything — big-pickle, free" : previewForMessage(c.lastMessage, c.attachments ?? []) || "Start a conversation"}</div>
                 </div>
+                {isAI && <Sparkles size={13} className="shrink-0 text-violet-300" />}
                 {pings > 0 && <span className="shrink-0 rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white">@{pings}</span>}
               </button>
-              <button
-                title="Close conversation"
-                onClick={() => void closeDM(c.id)}
-                className="hidden shrink-0 rounded p-1 text-xs text-speakit-muted hover:text-red-400 group-hover:block"
-              >
-                ✕
-              </button>
+              {!isAI && (
+                <button
+                  title="Close conversation"
+                  onClick={() => void closeDM(c.id, false)}
+                  className="hidden shrink-0 rounded p-1 text-xs text-speakit-muted hover:text-red-400 group-hover:block"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           );
         })}
@@ -129,9 +144,18 @@ export function DMSidebar({
   );
 }
 
-async function closeDM(conversationId: string) {
+async function closeDM(conversationId: string, isAI = false) {
+  if (isAI) {
+    alert("The AI chat is pinned and can't be closed.");
+    return;
+  }
   if (!confirm("Close this conversation? (Messages are deleted)")) return;
-  await fetch(`/api/dms/${conversationId}`, { method: "DELETE" });
+  const res = await fetch(`/api/dms/${conversationId}`, { method: "DELETE" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    alert(data.error ?? "Couldn't close conversation");
+    return;
+  }
   const st = useAppStore.getState();
   if (st.activeDMId === conversationId) st.setActiveDM(null);
   await st.refreshDMs();

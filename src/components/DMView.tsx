@@ -8,14 +8,15 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useAppStore } from "@/store/useAppStore";
 import { MessageItem } from "./MessageItem";
 import { MessageInput } from "./MessageInput";
-import { Avatar } from "./Avatar";
+import { Avatar, AITag } from "./Avatar";
 import { Bell, BellOff } from "lucide-react";
 
 export function DMView({ conversationId }: { conversationId: string }) {
   const { setMessages, addMessage, updateMessage, removeMessage, setTyping, typing, messages } = useChatStore();
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
-  const [other, setOther] = useState<{ id: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string; status: string } | null>(null);
+  const [other, setOther] = useState<{ id: string; username: string; displayName: string; avatarColor: string; avatarUrl?: string; status: string; isAI?: boolean } | null>(null);
+  const isAI = !!other && (other.isAI || other.username?.toLowerCase() === "ai");
   const bottomRef = useRef<HTMLDivElement>(null);
   const key = `dm:${conversationId}`;
   const list = messages[key] ?? [];
@@ -190,7 +191,8 @@ export function DMView({ conversationId }: { conversationId: string }) {
       <div className="flex h-12 min-w-0 items-center gap-2 border-b border-black/30 px-3 sm:px-4">
         {other && <Avatar name={other.displayName} color={other.avatarColor} src={other.avatarUrl || undefined} size={28} status={other.status} />}
         <span className="truncate font-bold text-white">{other ? other.displayName : "Direct Message"}</span>
-        {other && <span className="hidden truncate text-xs text-speakit-muted sm:block">@{other.username}</span>}
+        {isAI && <AITag />}
+        {other && <span className="hidden truncate text-xs text-speakit-muted sm:block">@{other.username}{isAI ? " · big-pickle (free) · always here" : ""}</span>}
         <div className="flex-1" />
         <button onClick={() => void toggleMute("dm", conversationId)} title={muted ? "Unmute DMs" : "Mute DMs"} className="rounded p-1.5 text-speakit-muted hover:text-white">
           {muted ? <BellOff size={16} /> : <Bell size={16} />}

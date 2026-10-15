@@ -95,6 +95,8 @@ export type FriendUser = {
   avatarColor: string;
   avatarUrl?: string;
   status: string;
+  isBot?: boolean;
+  isAI?: boolean;
 };
 
 export type GifFavorite = {
@@ -106,6 +108,7 @@ export type GifFavorite = {
 export type DMConversation = {
   id: string;
   other: FriendUser;
+  isAI?: boolean;
   lastMessage: string;
   attachments?: { url: string; name: string; mime: string }[];
   lastAt: string;

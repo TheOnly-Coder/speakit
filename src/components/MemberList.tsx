@@ -8,7 +8,7 @@ import type { MemberItem, RoleItem } from "@/store/useAppStore";
 import { groupMembers, displayColorFor } from "@/lib/memberGroups";
 import { ctxProps } from "./ContextMenu";
 
-/** Yapper/Discord-style member list: ROLE - count headers, role-colored names. */
+/** Yapper/Discord-style member list: ROLE - count headers, role-colored names. Offline is a virtual, non-editable trailing group. */
 export function MemberList({
   members,
   roles,
@@ -23,7 +23,9 @@ export function MemberList({
 
   return (
     <div>
-      {groups.map((g) => (
+      {groups.map((g) => {
+        const isOfflineGroup = g.key === "__offline";
+        return (
         <div key={g.key} className="mb-4">
           <div className="mb-1.5 px-2 text-[11px] font-extrabold uppercase tracking-[0.08em] text-speakit-muted/70">
             {g.name} · {g.members.length}
@@ -35,8 +37,8 @@ export function MemberList({
               <button
                 key={m.id}
                 onClick={() => openProfile(m.id)}
-                title={`@${m.username} — right-click for options`}
-                className="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/[0.06]"
+                title={isOfflineGroup ? `@${m.username} — offline (roles kept, returns to role group when back)` : `@${m.username} — right-click for options`}
+                className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/[0.06]${isOfflineGroup ? " opacity-60" : ""}`}
                 {...ctxProps(() => [
                   { type: "header" as const, label: m.displayName },
                   { type: "item" as const, label: "View Profile", onClick: () => openProfile(m.id) },
@@ -66,12 +68,13 @@ export function MemberList({
                   src={m.avatarUrl || undefined}
                   size={32}
                   status={m.status}
+                  className={isOfflineGroup ? "opacity-70 saturate-50 brightness-[0.8]" : undefined}
                 />
                 <span
                   className="flex min-w-0 flex-1 items-center gap-1 truncate text-sm font-medium text-white"
                   style={color ? { color } : undefined}
                 >
-                  <span className="truncate">{m.displayName}</span>
+                  <span className={`truncate${isOfflineGroup ? " brightness-[0.75]" : ""}`}>{m.displayName}</span>
                   {m.isBot && <BotTag />}
                   {isOwner && <Crown size={13} className="shrink-0 text-yellow-400" />}
                 </span>
@@ -79,7 +82,8 @@ export function MemberList({
             );
           })}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
