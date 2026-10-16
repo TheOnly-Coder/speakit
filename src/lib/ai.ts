@@ -484,9 +484,11 @@ export function answerMath(text: string): string | null {
     .replace(/(\d),(\d)/g, "$1$2");
 
   // sqrt(...) — resolve innermost first using the same safe evaluator.
+  let hadSqrt = false;
   for (let i = 0; i < 10; i++) {
     const sm = /sqrt\(\s*([^()]+?)\s*\)/i.exec(work);
     if (!sm) break;
+    hadSqrt = true;
     let v: number;
     try {
       v = evalArithmetic(sm[1]);
@@ -494,11 +496,11 @@ export function answerMath(text: string): string | null {
       return "Hmm, I couldn't parse that math — try something like `sqrt(16)` or `(2+3)*4` 🙂";
     }
     if (v < 0) return "Can't take the square root of a negative number 🙂";
-    work = `${work.slice(0, sm.index)}${v}${work.slice(sm.index + sm[0].length)}`;
+    work = `${work.slice(0, sm.index)}${Math.sqrt(v)}${work.slice(sm.index + sm[0].length)}`;
   }
   if (/sqrt\s*\(/i.test(work)) return "Hmm, I couldn't parse that math — try something like `sqrt(16)` or `(2+3)*4` 🙂";
 
-  if (!/^[\d\s+\-*/%^().]+$/.test(work) || !/\d/.test(work) || !/[+\-*/%^]/.test(work) || !parensBalanced(work)) {
+  if (!/^[\d\s+\-*/%^().]+$/.test(work) || !/\d/.test(work) || (!hadSqrt && !/[+\-*/%^]/.test(work)) || !parensBalanced(work)) {
     return null;
   }
 
