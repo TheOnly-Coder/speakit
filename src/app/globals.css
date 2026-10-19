@@ -369,19 +369,10 @@ body {
   font-family: "Inter", "gg sans", "Noto Sans", Whitney, "Helvetica Neue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "cv11", "ss01";
   text-rendering: optimizeLegibility;
-  /* Subtle ambient mesh so the app never looks flat grey */
-  background-image:
-    radial-gradient(1100px 500px at 15% -10%, rgb(108 108 245 / 0.14), transparent 60%),
-    radial-gradient(900px 480px at 95% 0%, rgb(167 139 250 / 0.1), transparent 60%),
-    radial-gradient(800px 600px at 50% 115%, rgb(34 211 238 / 0.06), transparent 60%);
   background-attachment: fixed;
 }
 
 html.light body {
-  background-image:
-    radial-gradient(1100px 500px at 15% -10%, rgb(108 108 245 / 0.09), transparent 60%),
-    radial-gradient(900px 480px at 95% 0%, rgb(168 85 247 / 0.07), transparent 60%),
-    radial-gradient(800px 600px at 50% 115%, rgb(14 165 183 / 0.05), transparent 60%);
 }
 
 /* Pop-in for autocomplete menus, dropdowns and small dialogs */
@@ -451,14 +442,11 @@ html.speakit-reduce-motion .modal-pop {
 }
 
 .brand-gradient {
-  background: linear-gradient(135deg, #6c6cf5 0%, #8b5cf6 45%, #d946ef 100%);
+  background: #5865f2;
 }
 
 .brand-text-gradient {
-  background: linear-gradient(135deg, #a5b4fc 0%, #c4b5fd 40%, #f0abfc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #ffffff;
 }
 
 /* Slim modern scrollbars */

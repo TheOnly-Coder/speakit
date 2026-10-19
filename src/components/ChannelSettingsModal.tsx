@@ -19,6 +19,8 @@ export function ChannelSettingsModal({ open, onClose, channelId }: { open: boole
   const { serverDetail, activeServerId, refreshServerDetail } = useAppStore();
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
+  const [nameColor, setNameColor] = useState("");
+  const [nameGradient, setNameGradient] = useState("");
   const [overwrites, setOverwrites] = useState<Overwrite[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,6 +31,8 @@ export function ChannelSettingsModal({ open, onClose, channelId }: { open: boole
     if (open && channel) {
       setName(channel.name);
       setTopic(channel.topic);
+      setNameColor(channel.nameColor ?? "");
+      setNameGradient(channel.nameGradient ?? "");
       setMsg("");
       void fetch(`/api/channels/${channel.id}/overwrites`, { cache: "no-store" })
         .then((r) => r.json())
@@ -56,7 +60,7 @@ export function ChannelSettingsModal({ open, onClose, channelId }: { open: boole
       const res = await fetch(`/api/channels/${channel.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim().toLowerCase(), topic }),
+        body: JSON.stringify({ name: name.trim().toLowerCase(), topic, nameColor, nameGradient }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -137,6 +141,12 @@ export function ChannelSettingsModal({ open, onClose, channelId }: { open: boole
               <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What is this channel about?" className={inputCls} maxLength={256} />
             </Field>
           )}
+          <Field label="Channel name color (hex, optional)">
+            <input value={nameColor} onChange={(e) => setNameColor(e.target.value)} placeholder="#5865f2" className={inputCls} maxLength={32} />
+          </Field>
+          <Field label="Channel name gradient (CSS, optional)">
+            <input value={nameGradient} onChange={(e) => setNameGradient(e.target.value)} placeholder="linear-gradient(90deg, #6c6cf5, #f472b6)" className={inputCls} maxLength={256} />
+          </Field>
           <div className="mb-1 text-xs font-bold uppercase tracking-wide text-speakit-muted">Who can use it (✓ allow / ✕ deny, deny wins)</div>
           <div className="mb-3 max-h-56 space-y-1 overflow-y-auto">
             {targets.map((t) => {

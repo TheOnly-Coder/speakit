@@ -229,7 +229,7 @@ export function ChatView({ channelId }: { channelId: string }) {
         channelId,
         edited: false,
         createdAt: new Date().toISOString(),
-        author: { id: u.id, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor, avatarUrl: u.avatarUrl },
+        author: { id: u.id, username: u.username, displayName: u.displayName, avatarColor: u.avatarColor, avatarUrl: u.avatarUrl, nameColor: u.nameColor, nameGradient: u.nameGradient, nameFont: u.nameFont },
         replyTo: replyTo ? { id: replyTo.id, content: replyTo.content, author: { id: replyTo.author.id, username: replyTo.author.username, displayName: replyTo.author.displayName } } : null,
         reactions: [],
         attachments,

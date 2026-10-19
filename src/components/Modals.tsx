@@ -281,6 +281,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [status, setStatus] = useState(user?.status ?? "online");
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? "");
   const [bannerUrl, setBannerUrl] = useState(user?.bannerUrl ?? "");
+  const [bio, setBio] = useState(user?.bio ?? "");
+  const [links, setLinks] = useState(user?.links ?? "");
+  const [nameFont, setNameFont] = useState(user?.nameFont ?? "");
+  const [nameColor, setNameColor] = useState(user?.nameColor ?? "");
+  const [nameGradient, setNameGradient] = useState(user?.nameGradient ?? "");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -293,6 +298,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       setStatus(user.status);
       setAvatarUrl(user.avatarUrl ?? "");
       setBannerUrl(user.bannerUrl ?? "");
+      setBio(user.bio ?? "");
+      setLinks(user.links ?? "");
+      setNameFont(user.nameFont ?? "");
+      setNameColor(user.nameColor ?? "");
+      setNameGradient(user.nameGradient ?? "");
       setMsg("");
       setTab("account");
     }
@@ -353,14 +363,14 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       const res = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, customStatus, status, avatarUrl, bannerUrl }),
+        body: JSON.stringify({ displayName, customStatus, status, avatarUrl, bannerUrl, bio, links, nameFont, nameColor, nameGradient }),
       });
       const data = await res.json();
       if (!res.ok) {
         setMsg(data.error ?? "Failed to save");
         return;
       }
-      setUser({ ...user!, displayName: data.user.displayName, customStatus: data.user.customStatus, status: data.user.status, avatarUrl: data.user.avatarUrl, bannerUrl: data.user.bannerUrl });
+      setUser({ ...user!, displayName: data.user.displayName, customStatus: data.user.customStatus, status: data.user.status, avatarUrl: data.user.avatarUrl, bannerUrl: data.user.bannerUrl, bio: data.user.bio, links: data.user.links, nameFont: data.user.nameFont, nameColor: data.user.nameColor, nameGradient: data.user.nameGradient });
       // Live-broadcast so friends see the new status instantly.
       try {
         const { getSocket } = await import("@/lib/socket");
@@ -448,6 +458,21 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </Field>
                 <Field label="Custom status">
                   <input value={customStatus} onChange={(e) => setCustomStatus(e.target.value)} placeholder="e.g. grinding ranked 🎮" className={inputCls} maxLength={128} />
+                </Field>
+                <Field label="Bio (emojis allowed)">
+                  <textarea value={bio} onChange={(e) => setBio(e.target.value)} className={inputCls} maxLength={500} rows={3} />
+                </Field>
+                <Field label="Affiliated links (comma separated)">
+                  <input value={links} onChange={(e) => setLinks(e.target.value)} placeholder="https://..." className={inputCls} maxLength={2048} />
+                </Field>
+                <Field label="Custom font for name">
+                  <input value={nameFont} onChange={(e) => setNameFont(e.target.value)} placeholder="e.g. cursive, monospace" className={inputCls} maxLength={64} />
+                </Field>
+                <Field label="Name color (hex)">
+                  <input value={nameColor} onChange={(e) => setNameColor(e.target.value)} placeholder="#ffffff" className={inputCls} maxLength={32} />
+                </Field>
+                <Field label="Name gradient (CSS)">
+                  <input value={nameGradient} onChange={(e) => setNameGradient(e.target.value)} placeholder="linear-gradient(90deg, #6c6cf5, #f472b6)" className={inputCls} maxLength={256} />
                 </Field>
                 <Field label="Online status">
                   <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>

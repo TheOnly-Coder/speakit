@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, UserPlus, Settings, Plus, FolderPlus, Copy, LogOut, X } from "lucide-react";
+import { ChevronDown, UserPlus, Settings, Plus, FolderPlus, Copy, LogOut, X, Trash2 } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { myServerPerms } from "@/lib/clientPerms";
@@ -90,7 +90,18 @@ export function ServerMenu({
             {serverDetail.name.slice(0, 1).toUpperCase()}
           </span>
         )}
-        <span className="flex-1 truncate text-[15px] font-extrabold tracking-tight text-white">{serverDetail.name}</span>
+        <span
+          className="flex-1 truncate text-[15px] font-extrabold tracking-tight text-white"
+          style={
+            serverDetail.nameGradient
+              ? { backgroundImage: serverDetail.nameGradient, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }
+              : serverDetail.nameColor
+                ? { color: serverDetail.nameColor }
+                : undefined
+          }
+        >
+          {serverDetail.name}
+        </span>
         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/[0.06] transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
           <ChevronDown size={14} className="text-speakit-muted" />
         </span>
@@ -162,9 +173,20 @@ export function ServerMenu({
             </button>
           )}
           {isOwner && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-speakit-muted">
-              <X size={12} /> Owners can&apos;t leave — transfer or delete instead.
-            </div>
+            <>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  window.dispatchEvent(new CustomEvent("speakit:delete-server"));
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-[13px] font-medium text-red-400 hover:bg-red-500 hover:text-white"
+              >
+                Delete Server <Trash2 size={14} />
+              </button>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-speakit-muted">
+                <X size={12} /> Owners can&apos;t leave — delete instead.
+              </div>
+            </>
           )}
         </div>
       )}

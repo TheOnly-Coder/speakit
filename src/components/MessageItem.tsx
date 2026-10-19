@@ -63,6 +63,12 @@ export const MessageItem = memo(function MessageItem({
     ? serverDetail?.members.find((m) => m.id === msg.author.id)
     : undefined;
   const authorColor = authorMember ? displayColorFor(authorMember, serverDetail?.roles ?? []) : null;
+  const nameColor = authorMember?.nameColor || msg.author.nameColor || "";
+  const nameGradient = authorMember?.nameGradient || msg.author.nameGradient || "";
+  const nameFont = authorMember?.nameFont || msg.author.nameFont || "";
+  const nameStyle: React.CSSProperties = nameGradient
+    ? { backgroundImage: nameGradient, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", fontFamily: nameFont || undefined }
+    : { color: nameColor || authorColor || undefined, fontFamily: nameFont || undefined };
   const replyPreview = useMemo(
     () => (msg.replyTo ? previewForMessage(msg.replyTo.content, msg.replyTo.attachments ?? []) : ""),
     [msg.replyTo]
@@ -99,7 +105,7 @@ export const MessageItem = memo(function MessageItem({
           <button
             onClick={() => openProfile(msg.author.id)}
             className="flex min-w-0 max-w-full items-center gap-1.5 truncate text-[15px] font-bold tracking-tight text-white hover:underline"
-            style={authorColor ? { color: authorColor } : undefined}
+            style={nameStyle}
           >
             <span className="truncate">{msg.author.displayName}</span>
             {(msg.author.username?.toLowerCase() === "ai" ? <AITag /> : msg.author.isBot && <BotTag />)}

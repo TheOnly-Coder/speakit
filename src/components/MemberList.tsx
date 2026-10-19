@@ -33,6 +33,9 @@ export function MemberList({
           {g.members.map((m) => {
             const color = displayColorFor(m, roles);
             const isOwner = m.id === ownerId || m.role === "owner";
+            const nameStyle: React.CSSProperties = m.nameGradient
+              ? { backgroundImage: m.nameGradient, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", fontFamily: m.nameFont || undefined }
+              : { color: m.nameColor || color || undefined, fontFamily: m.nameFont || undefined };
             return (
               <button
                 key={m.id}
@@ -72,7 +75,7 @@ export function MemberList({
                 />
                 <span
                   className="flex min-w-0 flex-1 items-center gap-1 truncate text-sm font-medium text-white"
-                  style={color ? { color } : undefined}
+                  style={nameStyle}
                 >
                   <span className={`truncate${isOfflineGroup ? " brightness-[0.75]" : ""}`}>{m.displayName}</span>
                   {m.isBot && <BotTag />}

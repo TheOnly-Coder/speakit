@@ -19,6 +19,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       bannerUrl: user.bannerUrl,
       status: visibleStatus(user.status, user.id),
       customStatus: user.customStatus,
+      bio: user.bio,
+      links: user.links,
+      nameFont: user.nameFont,
+      nameColor: user.nameColor,
+      nameGradient: user.nameGradient,
       createdAt: user.createdAt,
     },
   });

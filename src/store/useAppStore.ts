@@ -16,6 +16,8 @@ export type ServerListItem = {
 export type ChannelItem = {
   id: string;
   name: string;
+  nameColor?: string;
+  nameGradient?: string;
   type: "TEXT" | "VOICE";
   topic: string;
   serverId: string;
@@ -59,6 +61,9 @@ export type MemberItem = {
   username: string;
   displayName: string;
   avatarColor: string;
+  nameColor?: string;
+  nameGradient?: string;
+  nameFont?: string;
   avatarUrl?: string;
   status: string;
   isBot?: boolean;
@@ -75,6 +80,8 @@ export type ServerDetail = {
   bannerUrl?: string;
   description?: string;
   tags?: string;
+  nameColor?: string;
+  nameGradient?: string;
   inviteCode: string;
   discoverable: boolean;
   allowExternalEmoji: boolean;

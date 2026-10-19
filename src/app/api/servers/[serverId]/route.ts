@@ -44,6 +44,8 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
       bannerUrl: (server as unknown as { bannerUrl?: string }).bannerUrl ?? "",
       description: (server as unknown as { description?: string }).description ?? "",
       tags: (server as unknown as { tags?: string }).tags ?? "",
+      nameColor: (server as unknown as { nameColor?: string }).nameColor ?? "",
+      nameGradient: (server as unknown as { nameGradient?: string }).nameGradient ?? "",
       inviteCode: server.inviteCode,
       discoverable: server.discoverable,
       allowExternalEmoji: server.allowExternalEmoji,
@@ -74,6 +76,9 @@ export async function GET(_req: Request, { params }: { params: { serverId: strin
         displayName: m.user.displayName,
         avatarColor: m.user.avatarColor,
         avatarUrl: m.user.avatarUrl,
+        nameColor: (m.user as { nameColor?: string }).nameColor ?? "",
+        nameGradient: (m.user as { nameGradient?: string }).nameGradient ?? "",
+        nameFont: (m.user as { nameFont?: string }).nameFont ?? "",
         status: visibleStatus(m.user.status, m.user.id),
         isBot: !!(m.user as { isBot?: boolean }).isBot,
         role: m.role,
@@ -99,6 +104,8 @@ const patchSchema = z.object({
   bannerUrl: z.string().max(2048).optional(),
   description: z.string().max(256).optional(),
   tags: z.string().max(256).optional(),
+  nameColor: z.string().max(32).optional(),
+  nameGradient: z.string().max(256).optional(),
   discoverable: z.boolean().optional(),
   allowExternalEmoji: z.boolean().optional(),
   inviteCode: z.string().min(4).max(8).regex(/^[A-Z0-9]+$/).optional(),
@@ -135,6 +142,8 @@ export async function PATCH(req: Request, { params }: { params: { serverId: stri
       .slice(0, 8)
       .join(", ");
   }
+  if (parsed.data.nameColor !== undefined) data.nameColor = parsed.data.nameColor.slice(0, 32);
+  if (parsed.data.nameGradient !== undefined) data.nameGradient = parsed.data.nameGradient.slice(0, 256);
   if (parsed.data.discoverable !== undefined) data.discoverable = parsed.data.discoverable;
   if (parsed.data.allowExternalEmoji !== undefined) data.allowExternalEmoji = parsed.data.allowExternalEmoji;
   if (parsed.data.inviteCode !== undefined) {

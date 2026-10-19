@@ -7,6 +7,9 @@ export type ChatAuthor = {
   avatarColor: string;
   avatarUrl?: string;
   isBot?: boolean;
+  nameColor?: string;
+  nameGradient?: string;
+  nameFont?: string;
 };
 
 export type ChatAttachment = {

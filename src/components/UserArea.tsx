@@ -42,6 +42,10 @@ export function UserArea({ onOpenSettings, onLogout }: { onOpenSettings: () => v
 
   if (!user) return null;
 
+  const nameStyle: React.CSSProperties = user.nameGradient
+    ? { backgroundImage: user.nameGradient, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", fontFamily: user.nameFont || undefined }
+    : { color: user.nameColor || undefined, fontFamily: user.nameFont || undefined };
+
   const setStatus = async (status: string) => {
     try {
       const res = await fetch("/api/users/me", {
@@ -75,7 +79,7 @@ export function UserArea({ onOpenSettings, onLogout }: { onOpenSettings: () => v
               <Avatar name={user.displayName} color={user.avatarColor} src={user.avatarUrl || undefined} size={52} status={user.status} />
             </div>
             <div className="mt-2 rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
-              <div className="text-sm font-extrabold text-white">{user.displayName}</div>
+              <div className="text-sm font-extrabold text-white" style={nameStyle}>{user.displayName}</div>
               <div className="text-xs text-speakit-muted">@{user.username}</div>
               {user.customStatus && <div className="mt-1 text-xs text-speakit-text">{user.customStatus}</div>}
             </div>
@@ -122,7 +126,7 @@ export function UserArea({ onOpenSettings, onLogout }: { onOpenSettings: () => v
           <Avatar name={user.displayName} color={user.avatarColor} src={user.avatarUrl || undefined} size={34} status={user.status} />
         </button>
         <button onClick={() => setOpen((v) => !v)} className="min-w-0 flex-1 rounded-lg px-1 py-0.5 text-left transition hover:bg-white/[0.06]" title="Set status">
-          <div className="truncate text-[13px] font-bold text-white">{user.displayName}</div>
+          <div className="truncate text-[13px] font-bold text-white" style={nameStyle}>{user.displayName}</div>
           <div className="truncate text-[11px] capitalize text-speakit-muted">{user.status === "dnd" ? "Do not disturb" : user.status}</div>
         </button>
         <button

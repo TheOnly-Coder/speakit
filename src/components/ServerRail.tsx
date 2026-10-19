@@ -37,7 +37,7 @@ export function ServerRail({
         )}
         style={
           view === "home"
-            ? { background: "linear-gradient(135deg,#6c6cf5,#a855f7)" }
+            ? { background: "#5865f2" }
             : undefined
         }
       >

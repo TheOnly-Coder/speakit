@@ -108,6 +108,8 @@ function OverviewTab({ refresh }: { refresh: () => Promise<void> }) {
   const [name, setName] = useState(serverDetail?.name ?? "");
   const [description, setDescription] = useState(serverDetail?.description ?? "");
   const [tags, setTags] = useState(serverDetail?.tags ?? "");
+  const [nameColor, setNameColor] = useState(serverDetail?.nameColor ?? "");
+  const [nameGradient, setNameGradient] = useState(serverDetail?.nameGradient ?? "");
   const [discoverable, setDiscoverable] = useState(serverDetail?.discoverable ?? false);
   const [allowExternal, setAllowExternal] = useState(serverDetail?.allowExternalEmoji ?? true);
   const [msg, setMsg] = useState("");
@@ -119,6 +121,8 @@ function OverviewTab({ refresh }: { refresh: () => Promise<void> }) {
     setName(serverDetail?.name ?? "");
     setDescription(serverDetail?.description ?? "");
     setTags(serverDetail?.tags ?? "");
+    setNameColor(serverDetail?.nameColor ?? "");
+    setNameGradient(serverDetail?.nameGradient ?? "");
     setDiscoverable(serverDetail?.discoverable ?? false);
     setAllowExternal(serverDetail?.allowExternalEmoji ?? true);
   }, [serverDetail]);
@@ -251,6 +255,18 @@ function OverviewTab({ refresh }: { refresh: () => Promise<void> }) {
           <button onClick={() => void save({ tags })} disabled={busy} className="rounded-md bg-speakit-blurple px-3 text-sm text-white disabled:opacity-50">Save</button>
         </div>
       </Field>
+      <Field label="Server name color (hex, optional)">
+        <div className="flex gap-2">
+          <input value={nameColor} onChange={(e) => setNameColor(e.target.value)} placeholder="#5865f2" className={inputCls} maxLength={32} />
+          <button onClick={() => void save({ nameColor })} disabled={busy} className="rounded-md bg-speakit-blurple px-3 text-sm text-white disabled:opacity-50">Save</button>
+        </div>
+      </Field>
+      <Field label="Server name gradient (CSS, optional)">
+        <div className="flex gap-2">
+          <input value={nameGradient} onChange={(e) => setNameGradient(e.target.value)} placeholder="linear-gradient(90deg, #6c6cf5, #f472b6)" className={inputCls} maxLength={256} />
+          <button onClick={() => void save({ nameGradient })} disabled={busy} className="rounded-md bg-speakit-blurple px-3 text-sm text-white disabled:opacity-50">Save</button>
+        </div>
+      </Field>
       <label className="mb-2 flex cursor-pointer items-center justify-between rounded-md bg-speakit-input px-3 py-2.5 text-sm">
         <span className="text-white">List in server directory <span className="block text-xs font-normal text-speakit-muted">Anyone can find &amp; join</span></span>
         <input type="checkbox" checked={discoverable} onChange={(e) => { setDiscoverable(e.target.checked); void save({ discoverable: e.target.checked }); }} className="h-4 w-4 accent-[#5865f2]" />
@@ -259,6 +275,18 @@ function OverviewTab({ refresh }: { refresh: () => Promise<void> }) {
         <span className="text-white">Allow other servers&apos; emoji here</span>
         <input type="checkbox" checked={allowExternal} onChange={(e) => { setAllowExternal(e.target.checked); void save({ allowExternalEmoji: e.target.checked }); }} className="h-4 w-4 accent-[#5865f2]" />
       </label>
+      <div className="mt-4 rounded-md border border-red-500/30 bg-red-500/5 p-3">
+        <div className="mb-2 text-sm font-bold text-red-400">Danger zone</div>
+        <button
+          onClick={() => {
+            if (!serverDetail) return;
+            window.dispatchEvent(new CustomEvent("speakit:delete-server"));
+          }}
+          className="rounded-md bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-600"
+        >
+          Delete server
+        </button>
+      </div>
       {msg && <div className="mb-2 text-sm text-green-400">{msg}</div>}
     </div>
   );

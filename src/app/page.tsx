@@ -271,11 +271,14 @@ export default function HomePage() {
   useEffect(() => {
     const onLogout = () => void handleLogout();
     const onLeave = () => void handleLeaveServer();
+    const onDelete = () => void handleDeleteServer();
     window.addEventListener("speakit:logout", onLogout);
     window.addEventListener("speakit:leave-server", onLeave);
+    window.addEventListener("speakit:delete-server", onDelete);
     return () => {
       window.removeEventListener("speakit:logout", onLogout);
       window.removeEventListener("speakit:leave-server", onLeave);
+      window.removeEventListener("speakit:delete-server", onDelete);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeServerId, serverDetail]);
@@ -291,6 +294,26 @@ export default function HomePage() {
     }
     if (!confirm(`Leave "${name}"?`)) return;
     await fetch(`/api/servers/${activeServerId}`, { method: "DELETE" });
+    await refreshServers();
+    setActiveServer(null);
+    setView("home");
+  }, [activeServerId, refreshServers, setActiveServer, setView, user?.id]);
+  const handleDeleteServer = useCallback(async () => {
+    if (!activeServerId) return;
+    const st = useAppStore.getState();
+    const name = st.serverDetail?.name ?? "this server";
+    if (st.serverDetail?.ownerId !== user?.id) {
+      alert("Only the server owner can delete it.");
+      return;
+    }
+    if (!confirm(`Delete "${name}" permanently? This cannot be undone.`)) return;
+    setShowServerSettings(false);
+    const res = await fetch(`/api/servers/${activeServerId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Failed to delete server");
+      return;
+    }
     await refreshServers();
     setActiveServer(null);
     setView("home");

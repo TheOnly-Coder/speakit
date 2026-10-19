@@ -102,7 +102,18 @@ export function ChannelSidebar({
         )}>
           {ch.type === "VOICE" ? <Volume2 size={13} className="opacity-90" /> : <Hash size={13} className="opacity-90" />}
         </span>
-        <span className={cn("flex-1 truncate", active ? "font-semibold" : "font-medium")}>{ch.name}</span>
+        <span
+          className={cn("flex-1 truncate", active ? "font-semibold" : "font-medium")}
+          style={
+            ch.nameGradient
+              ? { backgroundImage: ch.nameGradient, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }
+              : ch.nameColor
+                ? { color: ch.nameColor }
+                : undefined
+          }
+        >
+          {ch.name}
+        </span>
         {pings > 0 && <span className="rounded-full bg-gradient-to-r from-rose-500 to-orange-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white shadow">@{pings}</span>}
         {muted && <BellOff size={12} className="shrink-0 opacity-60" />}
         {ch.type === "VOICE" && voice.channelId === ch.id && <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgb(52_211_153/0.6)]" />}

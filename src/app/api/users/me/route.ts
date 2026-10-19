@@ -14,6 +14,11 @@ export async function PATCH(req: Request) {
     status: z.enum(["online", "idle", "dnd", "invisible"]).optional(),
     avatarUrl: z.string().max(2048).optional(),
     bannerUrl: z.string().max(2048).optional(),
+    bio: z.string().max(500).optional(),
+    links: z.string().max(2048).optional(),
+    nameFont: z.string().max(64).optional(),
+    nameColor: z.string().max(32).optional(),
+    nameGradient: z.string().max(256).optional(),
   }).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid profile data" }, { status: 400 });
   for (const key of ["avatarUrl", "bannerUrl"] as const) {
@@ -30,9 +35,14 @@ export async function PATCH(req: Request) {
       ...(parsed.data.status ? { status: parsed.data.status } : {}),
       ...(parsed.data.avatarUrl !== undefined ? { avatarUrl: parsed.data.avatarUrl.slice(0, 2048) } : {}),
       ...(parsed.data.bannerUrl !== undefined ? { bannerUrl: parsed.data.bannerUrl.slice(0, 2048) } : {}),
+      ...(parsed.data.bio !== undefined ? { bio: parsed.data.bio.slice(0, 500) } : {}),
+      ...(parsed.data.links !== undefined ? { links: parsed.data.links.slice(0, 2048) } : {}),
+      ...(parsed.data.nameFont !== undefined ? { nameFont: parsed.data.nameFont.slice(0, 64) } : {}),
+      ...(parsed.data.nameColor !== undefined ? { nameColor: parsed.data.nameColor.slice(0, 32) } : {}),
+      ...(parsed.data.nameGradient !== undefined ? { nameGradient: parsed.data.nameGradient.slice(0, 256) } : {}),
     },
   });
   return NextResponse.json({
-    user: { id: updated.id, email: updated.email, username: updated.username, displayName: updated.displayName, avatarColor: updated.avatarColor, avatarUrl: updated.avatarUrl, bannerUrl: updated.bannerUrl, status: updated.status, customStatus: updated.customStatus },
+    user: { id: updated.id, email: updated.email, username: updated.username, displayName: updated.displayName, avatarColor: updated.avatarColor, avatarUrl: updated.avatarUrl, bannerUrl: updated.bannerUrl, status: updated.status, customStatus: updated.customStatus, bio: updated.bio, links: updated.links, nameFont: updated.nameFont, nameColor: updated.nameColor, nameGradient: updated.nameGradient },
   });
 }

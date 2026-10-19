@@ -8,6 +8,8 @@ const patchSchema = z.object({
   name: z.string().min(1).max(32).regex(/^[a-z0-9-_]+$/).optional(),
   topic: z.string().max(256).optional(),
   categoryId: z.string().nullable().optional(),
+  nameColor: z.string().max(32).optional(),
+  nameGradient: z.string().max(256).optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { channelId: string } }) {
@@ -25,6 +27,8 @@ export async function PATCH(req: Request, { params }: { params: { channelId: str
   const data: Record<string, unknown> = {};
   if (parsed.data.name !== undefined) data.name = parsed.data.name.toLowerCase();
   if (parsed.data.topic !== undefined) data.topic = parsed.data.topic.slice(0, 256);
+  if (parsed.data.nameColor !== undefined) data.nameColor = parsed.data.nameColor.slice(0, 32);
+  if (parsed.data.nameGradient !== undefined) data.nameGradient = parsed.data.nameGradient.slice(0, 256);
   if (parsed.data.categoryId !== undefined) {
     if (parsed.data.categoryId === null) {
       data.categoryId = null;
