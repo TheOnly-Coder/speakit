@@ -484,6 +484,35 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </Field>
                 {msg && <div className="mb-3 text-sm text-green-400">{msg}</div>}
                 <PrimaryButton onClick={save} disabled={busy}>{busy ? "Saving…" : "Save Changes"}</PrimaryButton>
+
+                <div className="mt-6 rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+                  <h3 className="mb-1 text-sm font-bold text-red-400">Danger Zone</h3>
+                  <p className="mb-3 text-xs text-speakit-muted">Permanently delete your account and all your data. This cannot be undone.</p>
+                  <button
+                    onClick={async () => {
+                      if (!user) return;
+                      if (!window.confirm(`Delete your account (@${user.username}) permanently? This cannot be undone.`)) return;
+                      setBusy(true);
+                      setMsg("");
+                      try {
+                        const res = await fetch("/api/users/me", { method: "DELETE" });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setMsg(data.error ?? "Failed to delete account");
+                          return;
+                        }
+                        onClose();
+                        window.dispatchEvent(new CustomEvent("speakit:logout"));
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    disabled={busy}
+                    className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {busy ? "Deleting…" : "Delete Account"}
+                  </button>
+                </div>
               </div>
             )}
 
